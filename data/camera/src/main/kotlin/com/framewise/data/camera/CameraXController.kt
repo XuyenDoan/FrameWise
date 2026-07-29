@@ -9,9 +9,12 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.ViewPort
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.LifecycleOwner
 import com.framewise.domain.model.CameraCaptureResult
 import com.framewise.domain.model.CameraState
@@ -87,7 +90,11 @@ class CameraXController @Inject constructor(
             val provider = awaitCameraProvider()
             cameraProvider = provider
             preview.setSurfaceProvider(previewView.surfaceProvider)
-            rebindUseCases(provider, lifecycleOwner)
+            // PreviewView.viewPort is null until it has a measured width/height,
+            // and rebindUseCases() needs it to keep Preview and ImageAnalysis
+            // cropped to the same region (see its KDoc) - wait for the first
+            // layout pass instead of binding with a null viewport.
+            previewView.doOnLayout { rebindUseCases(provider, lifecycleOwner) }
         }
     }
 
@@ -177,6 +184,21 @@ class CameraXController @Inject constructor(
         }
     }
 
+    /**
+     * Without a shared [ViewPort], [preview] and [imageAnalysis] each pick
+     * their own crop of the sensor - [preview] typically ends up close to
+     * the screen's aspect ratio while [imageAnalysis] is pinned to 4:3 (see
+     * its `setTargetResolution(640, 480)` above), so on a screen far from
+     * 4:3 (nearly every modern phone), the two use cases would see visibly
+     * different crops of the same scene. That mismatch is exactly what
+     * makes overlays computed from analysis-frame-normalized coordinates
+     * (e.g. `BoundingBoxOverlay`, `GridOverlay`) drift from the subject's
+     * real on-screen position as the device's aspect ratio departs further
+     * from 4:3. Binding both use cases through one [UseCaseGroup] with
+     * [PreviewView.getViewPort] forces CameraX to crop them identically, so
+     * analysis-frame coordinates map correctly onto the displayed preview
+     * regardless of screen aspect ratio.
+     */
     private fun rebindUseCases(provider: ProcessCameraProvider, owner: LifecycleOwner) {
         val cameraSelector = when (lensFacing) {
             LensFacing.BACK -> CameraSelector.DEFAULT_BACK_CAMERA
@@ -184,7 +206,21 @@ class CameraXController @Inject constructor(
         }
 
         provider.unbindAll()
-        val boundCamera = provider.bindToLifecycle(owner, cameraSelector, preview, imageCapture, imageAnalysis)
+        val viewPort = previewView?.viewPort
+        val boundCamera = if (viewPort != null) {
+            val useCaseGroup = UseCaseGroup.Builder()
+                .setViewPort(viewPort)
+                .addUseCase(preview)
+                .addUseCase(imageCapture)
+                .addUseCase(imageAnalysis)
+                .build()
+            provider.bindToLifecycle(owner, cameraSelector, useCaseGroup)
+        } else {
+            // Shouldn't happen once bind() only calls this from doOnLayout,
+            // but fails safe to the old (potentially misaligned) behavior
+            // rather than crashing if some caller invokes this earlier.
+            provider.bindToLifecycle(owner, cameraSelector, preview, imageCapture, imageAnalysis)
+        }
         camera = boundCamera
 
         val cameraInfo = boundCamera.cameraInfo

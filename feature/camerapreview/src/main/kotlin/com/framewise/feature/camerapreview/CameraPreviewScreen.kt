@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashAuto
@@ -30,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -45,9 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import com.framewise.core.ui.CameraControlButton
@@ -177,16 +182,32 @@ private fun CameraPreviewScreen(
                         onClick = onToggleFlash,
                     )
                     var showGridPicker by remember { mutableStateOf(false) }
-                    CameraControlButton(
-                        icon = Icons.Filled.GridOn,
-                        contentDescription = "Grid",
-                        onClick = { showGridPicker = !showGridPicker },
-                    )
-                    if (showGridPicker) {
-                        GridTypePicker(
-                            selected = uiState.gridType,
-                            onSelected = onGridTypeSelected,
+                    val density = LocalDensity.current
+                    Box {
+                        CameraControlButton(
+                            icon = Icons.Filled.GridOn,
+                            contentDescription = "Grid",
+                            onClick = { showGridPicker = !showGridPicker },
                         )
+                        if (showGridPicker) {
+                            // Popup floats above the surface instead of participating
+                            // in this Row's layout, so it can never push the score
+                            // badge / lens-switch button off narrow screens the way an
+                            // inline LazyRow did.
+                            Popup(
+                                alignment = Alignment.TopStart,
+                                offset = IntOffset(0, with(density) { 56.dp.roundToPx() }),
+                                onDismissRequest = { showGridPicker = false },
+                            ) {
+                                GridTypePicker(
+                                    selected = uiState.gridType,
+                                    onSelected = { type ->
+                                        onGridTypeSelected(type)
+                                        showGridPicker = false
+                                    },
+                                )
+                            }
+                        }
                     }
                     CameraControlButton(
                         icon = if (uiState.isVoiceEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
@@ -277,16 +298,26 @@ private fun GridTypePicker(
     onSelected: (GridType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier.width(280.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    // widthIn(max) instead of a fixed width: caps how wide this can get on
+    // small phones while still shrinking to fit on any screen; the LazyRow
+    // inside scrolls internally if all chips still don't fit at max width.
+    Surface(
+        modifier = modifier.widthIn(max = 260.dp),
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
     ) {
-        items(GridType.entries) { type ->
-            FilterChip(
-                selected = type == selected,
-                onClick = { onSelected(type) },
-                label = { Text(type.toVietnameseLabel()) },
-            )
+        LazyRow(
+            modifier = Modifier.padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(GridType.entries) { type ->
+                FilterChip(
+                    selected = type == selected,
+                    onClick = { onSelected(type) },
+                    label = { Text(type.toVietnameseLabel()) },
+                )
+            }
         }
     }
 }
