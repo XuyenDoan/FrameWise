@@ -48,15 +48,52 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật: CI đã XANH.** Commit `d4054f2` (Semantic Segmentation) build
-thành công ngay lần đầu — cả `:domain:test` (nay có thêm test cho
-`BUSY_BACKGROUND`) lẫn `:app:assembleDebug`, kể cả API MediaPipe
-`ImageSegmenter` mới (`ByteBufferExtractor`, `categoryMask().orElse(null)`,
-`ImageSegmenterOptions.builder()`). Đây là commit mới nhất trên branch
-tính đến lúc ghi chú này.
+**Cập nhật: CI đã XANH.** Commit `f6f7bb8` (fix layout GridTypePicker +
+đồng bộ crop Preview/ImageAnalysis qua `ViewPort`) build thành công — cả
+`:domain:test` lẫn `:app:assembleDebug`. Đây là commit mới nhất trên
+branch tính đến lúc ghi chú này. Chi tiết audit tổng thể + 2 lỗi đã sửa:
+xem mục "Audit layout/logic toàn app" bên dưới.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
 trước khi giả định branch đang ở trạng thái build được.
+
+## Audit layout/logic toàn app (2026-07-29)
+
+Bạn yêu cầu kiểm tra tổng thể bố trí UI trên nhiều máy Android khác nhau và
+chức năng có đúng không. **Sandbox không có emulator/thiết bị thật** (đã
+kiểm tra: không có `adb`, `emulator`, không `$ANDROID_HOME`) nên **không
+thể tự chạy app để test bằng mắt/chụp màn hình**. Đã làm thay bằng
+**rà soát code tĩnh toàn bộ** (đọc hết mọi Composable màn hình camera,
+overlay, banner, panel + mọi ViewModel/UseCase). Kết quả:
+
+- **Lỗi layout thật đã sửa**: `GridTypePicker` (`CameraPreviewScreen.kt`)
+  trước đây là `LazyRow` rộng cố định 280dp chèn thẳng vào Row các nút
+  điều khiển kiểu `SpaceBetween` → trên máy màn hình hẹp sẽ tràn, đè lên
+  badge điểm số/nút đổi camera. Đã sửa: đưa picker ra `Popup` nổi bên dưới
+  nút Grid (không còn tham gia layout của Row), giới hạn `widthIn(max =
+  260.dp)` thay vì width cố định.
+- **Lỗi logic thật đã sửa**: `Preview` và `ImageAnalysis` trước đây bind
+  độc lập, không chia sẻ vùng crop — `Preview` không set aspect ratio (bám
+  theo tỉ lệ màn hình thực tế) trong khi `ImageAnalysis` cố định 4:3 (qua
+  `setTargetResolution(640, 480)`). Trên màn hình càng lệch xa 4:3 (hầu hết
+  điện thoại hiện nay), toạ độ overlay (bounding box, grid...) tính từ khung
+  phân tích sẽ lệch khỏi vị trí thật trên preview hiển thị. Đã sửa bằng
+  `UseCaseGroup` + `ViewPort` lấy từ `PreviewView` — đây là cách CameraX
+  chính thức khuyến nghị cho đúng bài toán này (`CameraXController.kt`).
+- **Đã kiểm tra và thấy ổn** (không phải lỗi): toàn bộ `when` exhaustive
+  trên `GuidanceType`/`SceneType`/`FlashMode`/`HorizonLevel`/`GridType`/
+  `PoseSuggestion`; `WindowInsets` (status bar/navigation bar) đã xử lý ở
+  cột điều khiển chính và panel lịch sử; `CaptureHistoryPanel` dùng
+  `LazyColumn` nên tự cuộn, không tràn; các chuỗi `combine()` trong
+  `CameraPreviewViewModel` không có dấu hiệu lệch/stale value.
+- **Quan trọng — vẫn cần xác nhận trên thiết bị thật**: cả 2 sửa lỗi trên
+  đúng theo API/pattern chính thức của Compose và CameraX, đã qua CI biên
+  dịch thành công (commit `f6f7bb8`), nhưng **tôi chưa thể tự mắt kiểm
+  chứng trên nhiều kích thước máy thật** (máy nhỏ ~5", máy màn hình cao,
+  máy có notch/cutout, tablet/foldable). Khi bạn cài APK, ưu tiên kiểm tra:
+  1. Mở Grid picker trên máy màn hình hẹp — không còn bị đè/tràn.
+  2. Bounding box quanh khuôn mặt/vật thể có bám đúng vị trí thật trên
+     preview không (trước đây có nguy cơ lệch, nhất là gần viền khung).
 
 ## Việc CHƯA làm / cần người dùng xác nhận
 
