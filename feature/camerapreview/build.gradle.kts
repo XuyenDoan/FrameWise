@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":data:vision"))
     implementation(project(":feature:overlay"))
 
-    implementation(libs.androidx.camera.view)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.activity.compose)
+    implementation(libs.findLibrary("androidx-camera-view").get())
+    implementation(libs.findLibrary("androidx-compose-material-icons-extended").get())
+    implementation(libs.findLibrary("androidx-activity-compose").get())
 }

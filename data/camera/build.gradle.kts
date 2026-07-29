@@ -11,11 +11,11 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":core:common"))
 
-    implementation(libs.androidx.camera.core)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
+    implementation(libs.findLibrary("androidx-camera-core").get())
+    implementation(libs.findLibrary("androidx-camera-camera2").get())
+    implementation(libs.findLibrary("androidx-camera-lifecycle").get())
+    implementation(libs.findLibrary("androidx-camera-view").get())
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.findLibrary("androidx-core-ktx").get())
+    implementation(libs.findLibrary("kotlinx-coroutines-android").get())
 }

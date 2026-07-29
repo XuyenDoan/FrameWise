@@ -9,5 +9,5 @@ android {
 
 dependencies {
     implementation(project(":domain"))
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.findLibrary("kotlinx-coroutines-android").get())
 }

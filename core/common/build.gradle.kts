@@ -7,6 +7,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.findLibrary("kotlinx-coroutines-android").get())
     implementation("javax.inject:javax.inject:1")
 }

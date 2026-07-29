@@ -29,9 +29,9 @@ dependencies {
     implementation(project(":data:camera"))
     implementation(project(":feature:camerapreview"))
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.findLibrary("androidx-core-ktx").get())
+    implementation(libs.findLibrary("androidx-lifecycle-runtime-ktx").get())
+    implementation(libs.findLibrary("androidx-activity-compose").get())
+    implementation(libs.findLibrary("androidx-navigation-compose").get())
+    implementation(libs.findLibrary("androidx-hilt-navigation-compose").get())
 }

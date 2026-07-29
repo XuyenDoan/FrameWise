@@ -14,8 +14,8 @@ dependencies {
     // CameraXController owns; see CameraFrameProvider.kt in data:camera.
     implementation(project(":data:camera"))
 
-    implementation(libs.androidx.camera.core)
-    implementation(libs.mlkit.object.detection)
-    implementation(libs.mlkit.face.detection)
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.findLibrary("androidx-camera-core").get())
+    implementation(libs.findLibrary("mlkit-object-detection").get())
+    implementation(libs.findLibrary("mlkit-face-detection").get())
+    implementation(libs.findLibrary("kotlinx-coroutines-android").get())
 }
