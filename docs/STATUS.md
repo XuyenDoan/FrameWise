@@ -93,12 +93,13 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật: CI đã XANH.** Commit `5abe75d` (sửa lỗi gợi ý tự động mâu thuẫn
-với chế độ đã chọn + đổi "Thú vật" → "Thú cưng") build thành công — cả
-`:domain:test` lẫn `:app:assembleDebug`. Đây là commit mới nhất trên
+**Cập nhật: CI đã XANH.** Commit `ce94b69` (chụp ở độ phân giải cao nhất +
+chọn độ phân giải thủ công) build thành công ngay lần đầu — cả
+`:domain:test` lẫn `:app:assembleDebug`, kể cả phần Camera2 interop mới
+(`Camera2CameraInfo`, `ResolutionSelector`). Đây là commit mới nhất trên
 branch tính đến lúc ghi chú này. Chi tiết tính năng: xem
-`docs/SHOOTING_MODES.md`, "Sửa lỗi nút chụp ảnh" và "Audit layout/logic
-toàn app" bên dưới.
+`docs/RESOLUTION_PICKER.md`, `docs/SHOOTING_MODES.md`, "Sửa lỗi nút chụp
+ảnh" và "Audit layout/logic toàn app" bên dưới.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
 trước khi giả định branch đang ở trạng thái build được.
