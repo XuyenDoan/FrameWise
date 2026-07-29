@@ -13,7 +13,6 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
 
             extensions.configure<LibraryExtension> {
                 configureKotlinAndroid(this)
-                targetSdk = 35
 
                 @Suppress("UnstableApiUsage")
                 testOptions.unitTests.isIncludeAndroidResources = true
