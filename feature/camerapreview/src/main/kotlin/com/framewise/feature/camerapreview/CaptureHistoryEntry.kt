@@ -7,7 +7,7 @@ package com.framewise.feature.camerapreview
  * survive process death, only the current session.
  */
 data class CaptureHistoryEntry(
-    val filePath: String,
+    val uri: String,
     val compositionScore: Int,
     val capturedAtEpochMillis: Long,
 )

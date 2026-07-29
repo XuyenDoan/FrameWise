@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Only needed on API 26-28: MediaStore inserts are scoped-storage-safe
+         (no permission required) from API 29 (Q) onward. See
+         CameraXController.capturePhoto() and CameraPermissionState. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <uses-feature
         android:name="android.hardware.camera.any"

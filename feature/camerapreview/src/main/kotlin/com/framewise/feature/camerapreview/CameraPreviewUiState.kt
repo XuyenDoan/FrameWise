@@ -39,6 +39,6 @@ data class CameraPreviewUiState(
 )
 
 sealed interface CaptureEvent {
-    data class Success(val filePath: String) : CaptureEvent
+    data class Success(val uri: String) : CaptureEvent
     data class Failure(val reason: String) : CaptureEvent
 }

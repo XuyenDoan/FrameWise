@@ -31,6 +31,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,6 +82,7 @@ fun CameraPreviewRoute(
     val uiState by viewModel.uiState.collectAsState()
     val captureHistory by viewModel.captureHistory.collectAsState()
     val permissionState = rememberCameraPermissionState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         if (!permissionState.hasPermission) {
@@ -87,26 +90,51 @@ fun CameraPreviewRoute(
         }
     }
 
-    if (permissionState.hasPermission) {
-        CameraPreviewScreen(
-            uiState = uiState,
-            captureHistory = captureHistory,
-            onBindPreview = viewModel::bindPreview,
-            onUnbindPreview = viewModel::unbindPreview,
-            onToggleLens = viewModel::onToggleLens,
-            onToggleFlash = viewModel::onToggleFlash,
-            onZoomChange = viewModel::onZoomChange,
-            onExposureChange = viewModel::onExposureChange,
-            onFocusTap = viewModel::onFocusTap,
-            onGridTypeSelected = viewModel::onGridTypeSelected,
-            onToggleVoice = viewModel::onToggleVoice,
-            onCapture = viewModel::onCapture,
-            modifier = modifier,
-        )
-    } else {
-        CameraPermissionRationale(
-            onRequestPermission = permissionState.requestPermission,
-            modifier = modifier,
+    // Previously nothing collected captureEvents at all, so a successful
+    // (or failed) capture gave the user zero feedback - the shutter button
+    // looked broken even though CameraXController was actually saving a
+    // photo every time.
+    LaunchedEffect(viewModel) {
+        viewModel.captureEvents.collect { event ->
+            val message = when (event) {
+                is CaptureEvent.Success -> "Đã lưu ảnh vào thư viện"
+                is CaptureEvent.Failure -> "Chụp ảnh thất bại: ${event.reason}"
+            }
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (permissionState.hasPermission) {
+            CameraPreviewScreen(
+                uiState = uiState,
+                captureHistory = captureHistory,
+                onBindPreview = viewModel::bindPreview,
+                onUnbindPreview = viewModel::unbindPreview,
+                onToggleLens = viewModel::onToggleLens,
+                onToggleFlash = viewModel::onToggleFlash,
+                onZoomChange = viewModel::onZoomChange,
+                onExposureChange = viewModel::onExposureChange,
+                onFocusTap = viewModel::onFocusTap,
+                onGridTypeSelected = viewModel::onGridTypeSelected,
+                onToggleVoice = viewModel::onToggleVoice,
+                onCapture = viewModel::onCapture,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            CameraPermissionRationale(
+                onRequestPermission = permissionState.requestPermission,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(16.dp),
         )
     }
 }

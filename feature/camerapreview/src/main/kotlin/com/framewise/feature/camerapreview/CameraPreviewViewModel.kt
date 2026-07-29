@@ -169,12 +169,12 @@ class CameraPreviewViewModel @Inject constructor(
                 is CameraCaptureResult.Success -> {
                     _captureHistory.value = listOf(
                         CaptureHistoryEntry(
-                            filePath = result.photo.filePath,
+                            uri = result.photo.uri,
                             compositionScore = scoreAtCapture,
                             capturedAtEpochMillis = result.photo.capturedAtEpochMillis,
                         ),
                     ) + _captureHistory.value
-                    _captureEvents.emit(CaptureEvent.Success(result.photo.filePath))
+                    _captureEvents.emit(CaptureEvent.Success(result.photo.uri))
                 }
                 is CameraCaptureResult.Failure -> _captureEvents.emit(CaptureEvent.Failure(result.reason))
             }

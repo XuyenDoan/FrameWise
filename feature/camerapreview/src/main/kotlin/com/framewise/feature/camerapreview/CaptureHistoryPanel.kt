@@ -2,6 +2,7 @@ package com.framewise.feature.camerapreview
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,7 +96,7 @@ private fun HistoryRow(entry: CaptureHistoryEntry) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = entry.filePath.substringAfterLast('/'),
+            text = entry.uri.substringAfterLast('/'),
             color = Color.White.copy(alpha = 0.85f),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -112,8 +114,13 @@ private fun CaptureThumbnail(entry: CaptureHistoryEntry, label: String, modifier
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = label, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
 
-        val bitmapState = produceState<Bitmap?>(initialValue = null, key1 = entry.filePath) {
-            value = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(entry.filePath) }
+        val context = LocalContext.current
+        val bitmapState = produceState<Bitmap?>(initialValue = null, key1 = entry.uri) {
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(Uri.parse(entry.uri))?.use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
         }
 
         Box(

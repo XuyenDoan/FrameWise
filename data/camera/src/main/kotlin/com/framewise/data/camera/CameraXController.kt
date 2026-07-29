@@ -1,7 +1,9 @@
 package com.framewise.data.camera
 
+import android.content.ContentValues
 import android.content.Context
-import android.os.Environment
+import android.os.Build
+import android.provider.MediaStore
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
@@ -23,7 +25,6 @@ import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.LensFacing
 import com.framewise.domain.repository.CameraRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -152,11 +153,32 @@ class CameraXController @Inject constructor(
         _cameraState.value = state.copy(exposureIndex = clamped)
     }
 
+    /**
+     * Saves through [MediaStore] (public Pictures/FrameWise) instead of
+     * `getExternalFilesDir` (app-private storage), which the CameraX
+     * `ImageCapture.OutputFileOptions.Builder(File)` overload used
+     * previously wrote to - a real photo was being written every time, it
+     * just never showed up in the device's Gallery/Photos app since that
+     * app-private directory isn't scanned into MediaStore. `RELATIVE_PATH`
+     * only exists from API 29 (Q) onward; on API 26-28 the write instead
+     * needs `WRITE_EXTERNAL_STORAGE` (declared with `maxSdkVersion="28"`
+     * in this module's manifest, requested at runtime alongside CAMERA -
+     * see `CameraPermissionState`), and the file lands in the default
+     * Pictures root rather than a FrameWise subfolder.
+     */
     override suspend fun capturePhoto(): CameraCaptureResult {
-        val outputDirectory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-            ?: context.filesDir
-        val photoFile = File(outputDirectory, "FrameWise_${System.currentTimeMillis()}.jpg")
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "FrameWise_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/FrameWise")
+            }
+        }
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+            context.contentResolver,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues,
+        ).build()
 
         return suspendCancellableCoroutine { continuation ->
             imageCapture.takePicture(
@@ -164,10 +186,15 @@ class CameraXController @Inject constructor(
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        val savedUri = output.savedUri
+                        if (savedUri == null) {
+                            continuation.resume(CameraCaptureResult.Failure("Không lấy được đường dẫn ảnh đã lưu"))
+                            return
+                        }
                         continuation.resume(
                             CameraCaptureResult.Success(
                                 CapturedPhoto(
-                                    filePath = photoFile.absolutePath,
+                                    uri = savedUri.toString(),
                                     capturedAtEpochMillis = System.currentTimeMillis(),
                                 ),
                             ),

@@ -2,6 +2,7 @@ package com.framewise.feature.camerapreview
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -13,30 +14,41 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
 /**
- * Minimal permission-state holder for CAMERA. Kept local to this feature
- * rather than pulling in Accompanist Permissions, since a single permission
- * with a simple grant/deny flow doesn't need that dependency.
+ * Minimal permission-state holder. Kept local to this feature rather than
+ * pulling in Accompanist Permissions, since this simple grant/deny flow
+ * doesn't need that dependency.
+ *
+ * Requests CAMERA, plus WRITE_EXTERNAL_STORAGE on API 26-28 only - saving a
+ * capture through MediaStore (see CameraXController.capturePhoto) needs
+ * that permission pre-Q, but scoped storage makes it unnecessary (and it's
+ * not even declared in the manifest past API 28) from Q onward.
  */
 @Composable
 fun rememberCameraPermissionState(): CameraPermissionState {
     val context = LocalContext.current
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA,
-            ) == PackageManager.PERMISSION_GRANTED,
-        )
+    val requiredPermissions = remember {
+        buildList {
+            add(Manifest.permission.CAMERA)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
     }
 
+    fun allGranted() = requiredPermissions.all {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    var hasPermission by remember { mutableStateOf(allGranted()) }
+
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted -> hasPermission = granted }
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results -> hasPermission = results.values.all { it } }
 
     return remember(hasPermission) {
         CameraPermissionState(
             hasPermission = hasPermission,
-            requestPermission = { launcher.launch(Manifest.permission.CAMERA) },
+            requestPermission = { launcher.launch(requiredPermissions.toTypedArray()) },
         )
     }
 }
