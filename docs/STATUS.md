@@ -46,9 +46,10 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật (commit `ee4fcd7`): CI đã XANH.** Vừa push thêm Horizon line
-detection (commit sau `ee4fcd7`) — **chưa có kết quả CI cho commit này**,
-kiểm tra lại trước khi giả định vẫn xanh.
+**Cập nhật: CI đã XANH.** Commit `17ca8fc` (Horizon line detection) build
+thành công — cả `:domain:test` (nay có thêm test cho horizon-line
+guidance) lẫn `:app:assembleDebug`. Đây là commit mới nhất trên branch
+tính đến lúc ghi chú này.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
 trước khi giả định branch đang ở trạng thái build được.
