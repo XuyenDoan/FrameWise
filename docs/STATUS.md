@@ -80,14 +80,11 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật: CI đã XANH.** Commit `0f8d337` (chế độ chụp + chọn chủ thể +
-glossary người mới) build thành công — cả `:domain:test` lẫn
-`:app:assembleDebug`. Đây là commit mới nhất trên branch tính đến lúc ghi
-chú này. Trên đường tới đây có 2 lỗi thật đã sửa qua các lần lặp: 1 lỗi
-test tự viết sai fixture (`ae8cc9c`), 1 lỗi biên dịch thật — import sai
-`item` (hàm thành viên của `LazyListScope`, không phải symbol cấp package,
-import nó gây lỗi `Unresolved reference`) ở `0f8d337`. Chi tiết tính năng:
-xem `docs/SHOOTING_MODES.md`, "Sửa lỗi nút chụp ảnh" và "Audit layout/logic
+**Cập nhật: CI đã XANH.** Commit `5abe75d` (sửa lỗi gợi ý tự động mâu thuẫn
+với chế độ đã chọn + đổi "Thú vật" → "Thú cưng") build thành công — cả
+`:domain:test` lẫn `:app:assembleDebug`. Đây là commit mới nhất trên
+branch tính đến lúc ghi chú này. Chi tiết tính năng: xem
+`docs/SHOOTING_MODES.md`, "Sửa lỗi nút chụp ảnh" và "Audit layout/logic
 toàn app" bên dưới.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
