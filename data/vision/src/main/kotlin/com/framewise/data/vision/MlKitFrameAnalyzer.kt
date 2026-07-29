@@ -4,6 +4,8 @@ import android.graphics.Rect
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.framewise.data.vision.pose.PoseFrameProcessor
+import com.framewise.data.vision.segmentation.BackgroundSegmentationProcessor
+import com.framewise.domain.model.BackgroundState
 import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.NormalizedRect
 import com.framewise.domain.model.PoseLandmark
@@ -38,6 +40,7 @@ import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
  */
 internal class MlKitFrameAnalyzer(
     private val poseFrameProcessor: PoseFrameProcessor,
+    private val backgroundSegmentationProcessor: BackgroundSegmentationProcessor,
     private val onResult: (VisionResult) -> Unit,
     private val onPoseResult: (List<PoseLandmark>) -> Unit,
 ) : ImageAnalysis.Analyzer {
@@ -63,6 +66,8 @@ internal class MlKitFrameAnalyzer(
     private var frameCount = 0
     private var lastScene = SceneType.UNKNOWN
     private var lastPoseTimestampMs = 0L
+    private var lastSegmentationTimestampMs = 0L
+    private var lastBackgroundState = BackgroundState.UNKNOWN
 
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
@@ -82,6 +87,8 @@ internal class MlKitFrameAnalyzer(
         frameCount++
         val shouldClassifyScene = frameCount % SCENE_ANALYSIS_INTERVAL == 0
         val shouldDetectPose = poseFrameProcessor.isReady && frameCount % POSE_ANALYSIS_INTERVAL == 0
+        val shouldAnalyzeBackground =
+            backgroundSegmentationProcessor.isReady && frameCount % SEGMENTATION_ANALYSIS_INTERVAL == 0
 
         faceDetector.process(inputImage)
             .addOnCompleteListener { faceTask ->
@@ -108,12 +115,27 @@ internal class MlKitFrameAnalyzer(
                                 onPoseResult(poseFrameProcessor.detect(mediaImage, rotationDegrees, timestampMs))
                             }
 
+                            // Symmetric to horizon-line: only meaningful when
+                            // there IS a subject to separate from a background.
+                            // Cached across throttled-out frames (like scene)
+                            // so guidance doesn't flicker every few frames.
+                            if (subjects.isEmpty()) {
+                                lastBackgroundState = BackgroundState.UNKNOWN
+                            } else if (shouldAnalyzeBackground) {
+                                val timestampMs = (imageProxy.imageInfo.timestamp / 1_000_000)
+                                    .coerceAtLeast(lastSegmentationTimestampMs + 1)
+                                lastSegmentationTimestampMs = timestampMs
+                                lastBackgroundState =
+                                    backgroundSegmentationProcessor.detect(mediaImage, rotationDegrees, timestampMs)
+                            }
+
                             onResult(
                                 VisionResult(
                                     subjects = subjects,
                                     lighting = lighting,
                                     scene = lastScene,
                                     horizonLineY = horizonLineY,
+                                    backgroundState = lastBackgroundState,
                                 ),
                             )
                             imageProxy.close()
@@ -175,5 +197,6 @@ internal class MlKitFrameAnalyzer(
     private companion object {
         const val SCENE_ANALYSIS_INTERVAL = 15
         const val POSE_ANALYSIS_INTERVAL = 5
+        const val SEGMENTATION_ANALYSIS_INTERVAL = 8
     }
 }

@@ -20,14 +20,14 @@
 | 1 | Lấy nét sắc vào mắt/khuôn mặt chủ thể | ⚠️ Một phần | Tap-to-focus đã có; auto lấy nét ưu tiên vào face bounding box (ML Kit Face Detection) **chưa** tự động — hiện người dùng phải tự tap vào mắt |
 | 2 | Bố cục theo quy tắc 1/3 hoặc có chủ đích rõ ràng, không đặt giữa ngẫu nhiên | ✅ Có | `AnalyzeCompositionUseCase` so vị trí chủ thể với 4 giao điểm 1/3, sinh guidance MOVE_LEFT/RIGHT/RAISE/LOWER_CAMERA |
 | 3 | Khoảng trống đầu (headroom) hợp lý | ✅ Có | Khi chủ thể là FACE (ML Kit Face Detection), `AnalyzeCompositionUseCase` tính khoảng trống phía trên khuôn mặt so với mép khung, so với ngưỡng 5%-15% chiều cao khung → RAISE_CAMERA/LOWER_CAMERA |
-| 4 | Hậu cảnh không gây xao nhãng, tách chủ thể khỏi nền | ❌ Chưa | Cần depth/segmentation — ngoài phạm vi hiện tại (cần MediaPipe Selfie Segmentation, chưa làm) |
+| 4 | Hậu cảnh không gây xao nhãng, tách chủ thể khỏi nền | ⚠️ Một phần | MediaPipe Selfie Segmentation (`BackgroundSegmentationProcessor`) ước lượng độ "rối" hậu cảnh qua độ gồ ghề của mask tách nền/chủ thể, sinh guidance `BUSY_BACKGROUND`. **Đây là proxy gián tiếp** (đo hình dạng mask, không đo trực tiếp độ rối hình ảnh thật) — xem giới hạn trong `BackgroundSegmentationProcessor.kt` |
 | 5 | Ánh sáng có hướng rõ, không ngược sáng làm mất chi tiết mặt | ✅ Có | `LuminanceEvaluator` so độ sáng vùng chủ thể vs toàn khung → phát hiện BACKLIT, sinh guidance IMPROVE_LIGHTING |
 | 6 | Đường chân trời (nếu có) phải thẳng | ✅ Có | `HorizonSensorController` (rotation vector sensor) + `HorizonLevelOverlay` + guidance LEVEL_HORIZON |
 | 7 | Biểu cảm/tư thế tự nhiên | ❌ Chưa | Đây là Pose Assistant (Phase 9 trong roadmap Phase 1, dùng MediaPipe Pose Landmarker) — chưa làm |
 | 8 | Độ tương phản & phơi sáng vùng da hài hòa, không cháy sáng/thiếu sáng | ✅ Có | `LuminanceEvaluator` phát hiện UNDEREXPOSED/OVEREXPOSED tổng thể; **chưa** phân tích riêng vùng da/tone da |
 | 9 | Không cắt cụt gây khó chịu (khớp tay/chân) | ❌ Chưa | Cần phân tích pose/khung xương để biết "khớp" nằm ở đâu — thuộc Pose Assistant, chưa làm |
 
-**Điểm chân dung: 5/9 tiêu chí có hỗ trợ kỹ thuật đầy đủ, 1/9 hỗ trợ một phần, 3/9 chưa làm.**
+**Điểm chân dung: 5/9 tiêu chí có hỗ trợ kỹ thuật đầy đủ, 2/9 hỗ trợ một phần, 2/9 chưa làm.**
 
 ## Checklist — Phong cảnh (Landscape)
 
@@ -57,12 +57,12 @@ Nhóm tiêu chí còn thiếu đều là những tiêu chí **mang tính nghệ 
 nghĩa cao** (headroom chuẩn, tách nền, leading lines, pose tự nhiên, cân
 bằng thị giác) — đòi hỏi mô hình thị giác máy tính phức tạp hơn nhiều (phân
 vùng ảnh, ước lượng độ sâu, phát hiện đường nét, phân tích dáng người chi
-tiết). Scene Recognition, Pose Assistant (MediaPipe) và Horizon line
-detection trong ảnh đều đã được bổ sung ở các lượt sau — xem
-`docs/PHASE_8_TO_10.md`, `docs/POSE_ASSISTANT.md`.
+tiết). Scene Recognition, Pose Assistant (MediaPipe), Horizon line
+detection trong ảnh, và Semantic Segmentation tách nền (một phần) đều đã
+được bổ sung ở các lượt sau — xem `docs/PHASE_8_TO_10.md`,
+`docs/POSE_ASSISTANT.md`, `docs/SEMANTIC_SEGMENTATION.md`.
 
-**Đề xuất tiếp theo** nếu muốn tăng % tiêu chí đạt được: Semantic
-segmentation để tách nền/tiền cảnh (phục vụ cả tiêu chí "hậu cảnh không
-gây xao nhãng" ở Chân dung lẫn "có tiền cảnh tạo chiều sâu" ở Phong cảnh)
-— đây là hạng mục còn lại tốn công sức nhất, cần mô hình segmentation
-riêng (vd. MediaPipe Selfie Segmentation), chưa làm.
+**Đề xuất tiếp theo** nếu muốn tăng % tiêu chí đạt được: leading lines
+detection (edge/line detection cho tiêu chí "đường dẫn mắt") và cân bằng
+thị giác tổng thể — cả hai đều cần mô hình/heuristic thị giác máy tính
+phức tạp hơn, chưa làm.

@@ -35,6 +35,23 @@ enum class LightingState {
     BACKLIT,
 }
 
+/**
+ * Coarse read on how visually "busy" the area *behind* the primary subject
+ * is, from MediaPipe Selfie Segmentation's foreground/background mask +
+ * a texture measure over the background region alone (see
+ * `BackgroundSegmentationProcessor` in data:vision). [UNKNOWN] covers both
+ * "no primary subject to separate a background from" and "segmentation
+ * model not ready yet" — [BUSY] is only ever reported when there was
+ * enough signal to be reasonably sure, matching the fail-closed pattern
+ * used everywhere else in this pipeline ([HorizonLineDetector][com.framewise.data.vision.HorizonLineDetector],
+ * [SceneClassifier][com.framewise.data.vision.SceneClassifier]).
+ */
+enum class BackgroundState {
+    CLEAN,
+    BUSY,
+    UNKNOWN,
+}
+
 data class VisionResult(
     val subjects: List<DetectedSubject> = emptyList(),
     val lighting: LightingState = LightingState.GOOD,
@@ -49,4 +66,5 @@ data class VisionResult(
      * must not guess a value when this is null.
      */
     val horizonLineY: Float? = null,
+    val backgroundState: BackgroundState = BackgroundState.UNKNOWN,
 )

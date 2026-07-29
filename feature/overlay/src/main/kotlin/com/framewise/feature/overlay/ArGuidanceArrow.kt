@@ -56,7 +56,7 @@ fun ArGuidanceArrow(guidance: GuidanceType, modifier: Modifier = Modifier) {
             GuidanceType.MOVE_CLOSER -> drawConvergingChevrons(color)
             GuidanceType.MOVE_FARTHER -> drawDivergingChevrons(color)
             GuidanceType.LEVEL_HORIZON -> drawRotateArc(color)
-            GuidanceType.IMPROVE_LIGHTING, GuidanceType.GOOD -> Unit
+            GuidanceType.IMPROVE_LIGHTING, GuidanceType.BUSY_BACKGROUND, GuidanceType.GOOD -> Unit
         }
     }
 }

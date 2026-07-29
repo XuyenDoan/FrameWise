@@ -1,21 +1,19 @@
 package com.framewise.data.vision.pose
 
 import android.content.Context
-import android.util.Log
+import com.framewise.data.vision.ModelFileDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * MediaPipe Tasks needs a local `.task` model file — unlike ML Kit's
  * bundled detectors, there is no in-app-binary option, and the model
  * (~5-9 MB for the "lite" pose variant) is too large to vendor as a repo
  * asset here. This downloads it once, on first use, to app-private
- * storage, and reuses the cached file afterwards.
+ * storage, and reuses the cached file afterwards (see
+ * [ModelFileDownloader], shared with `SegmentationModelProvider`).
  *
  * Requires network access the *first* time the camera screen runs Pose
  * Assistant; if that fails (offline, blocked, URL moved), [getModelFile]
@@ -27,25 +25,8 @@ import kotlinx.coroutines.withContext
 class PoseModelProvider @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val modelFile: File
-        get() = File(context.filesDir, MODEL_FILE_NAME)
-
-    suspend fun getModelFile(): File? = withContext(Dispatchers.IO) {
-        val existing = modelFile
-        if (existing.exists() && existing.length() > 0) return@withContext existing
-
-        runCatching {
-            val tempFile = File(context.cacheDir, "$MODEL_FILE_NAME.download")
-            URL(MODEL_DOWNLOAD_URL).openStream().use { input ->
-                tempFile.outputStream().use { output -> input.copyTo(output) }
-            }
-            tempFile.copyTo(existing, overwrite = true)
-            tempFile.delete()
-            existing
-        }.onFailure { error ->
-            Log.w(TAG, "Pose model download failed - Pose Assistant will stay disabled this session", error)
-        }.getOrNull()
-    }
+    suspend fun getModelFile(): File? =
+        ModelFileDownloader.download(context, MODEL_FILE_NAME, MODEL_DOWNLOAD_URL, TAG)
 
     private companion object {
         const val TAG = "PoseModelProvider"

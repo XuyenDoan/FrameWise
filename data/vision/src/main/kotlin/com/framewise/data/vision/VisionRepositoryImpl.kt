@@ -2,6 +2,7 @@ package com.framewise.data.vision
 
 import com.framewise.data.camera.CameraFrameProvider
 import com.framewise.data.vision.pose.PoseFrameProcessor
+import com.framewise.data.vision.segmentation.BackgroundSegmentationProcessor
 import com.framewise.domain.model.PoseLandmark
 import com.framewise.domain.model.VisionResult
 import com.framewise.domain.repository.PoseRepository
@@ -22,16 +23,19 @@ import kotlinx.coroutines.launch
  * implementation are Hilt singletons, this wiring only happens once for the
  * whole app, and nothing else needs to remember to connect them.
  *
- * Also owns [PoseRepository]: pose detection shares the same single
- * [ImageAnalysis][androidx.camera.core.ImageAnalysis] frame stream as
- * face/object/scene detection (CameraX only allows one analyzer), so it
- * has to be driven from the same [MlKitFrameAnalyzer] instance rather than
- * a separate repository registering its own analyzer.
+ * Also owns [PoseRepository]: pose detection (and background-segmentation
+ * analysis, folded into [VisionResult] rather than a separate repository)
+ * share the same single [ImageAnalysis][androidx.camera.core.ImageAnalysis]
+ * frame stream as face/object/scene detection (CameraX only allows one
+ * analyzer), so all of it has to be driven from the same
+ * [MlKitFrameAnalyzer] instance rather than each registering its own
+ * analyzer.
  */
 @Singleton
 class VisionRepositoryImpl @Inject constructor(
     frameProvider: CameraFrameProvider,
     poseFrameProcessor: PoseFrameProcessor,
+    backgroundSegmentationProcessor: BackgroundSegmentationProcessor,
 ) : VisionRepository, PoseRepository {
 
     private val _visionResults = MutableStateFlow(VisionResult())
@@ -44,10 +48,12 @@ class VisionRepositoryImpl @Inject constructor(
 
     init {
         repositoryScope.launch { poseFrameProcessor.ensureInitialized() }
+        repositoryScope.launch { backgroundSegmentationProcessor.ensureInitialized() }
 
         frameProvider.setFrameAnalyzer(
             MlKitFrameAnalyzer(
                 poseFrameProcessor = poseFrameProcessor,
+                backgroundSegmentationProcessor = backgroundSegmentationProcessor,
                 onResult = { result -> _visionResults.value = result },
                 onPoseResult = { landmarks -> _poseLandmarks.value = landmarks },
             ),

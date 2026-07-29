@@ -13,6 +13,7 @@ enum class GuidanceType(val priority: Int) {
     MOVE_CLOSER(2),
     MOVE_FARTHER(2),
     IMPROVE_LIGHTING(3),
+    BUSY_BACKGROUND(4),
     GOOD(99),
 }
 

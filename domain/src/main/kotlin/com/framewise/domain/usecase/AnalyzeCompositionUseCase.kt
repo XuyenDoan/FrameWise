@@ -1,5 +1,6 @@
 package com.framewise.domain.usecase
 
+import com.framewise.domain.model.BackgroundState
 import com.framewise.domain.model.CompositionGuidance
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonLevel
@@ -67,6 +68,11 @@ class AnalyzeCompositionUseCase @Inject constructor() {
                     messages += GuidanceType.MOVE_FARTHER
                     score -= 10
                 }
+            }
+
+            if (vision.backgroundState == BackgroundState.BUSY) {
+                messages += GuidanceType.BUSY_BACKGROUND
+                score -= 10
             }
         } else {
             // No dominant foreground subject - typical of a landscape shot.

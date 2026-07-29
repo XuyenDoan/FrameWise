@@ -1,5 +1,6 @@
 package com.framewise.domain.usecase
 
+import com.framewise.domain.model.BackgroundState
 import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
@@ -138,6 +139,32 @@ class AnalyzeCompositionUseCaseTest {
 
         assertThat(result.score).isEqualTo(100)
         assertThat(result.messages).containsExactly(GuidanceType.GOOD)
+    }
+
+    @Test
+    fun `busy background with a subject present suggests changing angle`() {
+        val subject = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.PERSON,
+            confidence = 0.9f,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(subject), backgroundState = BackgroundState.BUSY),
+            horizon = HorizonState.fromAngle(0f),
+        )
+
+        assertThat(result.messages).contains(GuidanceType.BUSY_BACKGROUND)
+        assertThat(result.score).isEqualTo(90)
+    }
+
+    @Test
+    fun `busy background is ignored when there is no primary subject`() {
+        val result = useCase(
+            vision = VisionResult(backgroundState = BackgroundState.BUSY),
+            horizon = HorizonState.fromAngle(0f),
+        )
+
+        assertThat(result.messages).doesNotContain(GuidanceType.BUSY_BACKGROUND)
     }
 
     @Test

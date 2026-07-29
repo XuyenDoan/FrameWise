@@ -197,5 +197,6 @@ private fun GuidanceType.toSpokenVietnamese(): String = when (this) {
     GuidanceType.MOVE_CLOSER -> "Hãy tiến thêm một bước"
     GuidanceType.MOVE_FARTHER -> "Hãy lùi ra xa hơn"
     GuidanceType.IMPROVE_LIGHTING -> "Điều chỉnh lại ánh sáng"
+    GuidanceType.BUSY_BACKGROUND -> "Hậu cảnh hơi rối, thử đổi góc chụp"
     GuidanceType.GOOD -> "Bố cục đẹp, có thể chụp"
 }

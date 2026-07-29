@@ -39,5 +39,6 @@ private fun GuidanceType.toVietnameseLabel(): String = when (this) {
     GuidanceType.MOVE_CLOSER -> "Tiến gần hơn"
     GuidanceType.MOVE_FARTHER -> "Lùi ra xa"
     GuidanceType.IMPROVE_LIGHTING -> "Điều chỉnh ánh sáng"
+    GuidanceType.BUSY_BACKGROUND -> "Hậu cảnh hơi rối, thử đổi góc chụp"
     GuidanceType.GOOD -> "Bố cục đẹp"
 }
