@@ -48,14 +48,44 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật: CI đã XANH.** Commit `f6f7bb8` (fix layout GridTypePicker +
-đồng bộ crop Preview/ImageAnalysis qua `ViewPort`) build thành công — cả
+**Cập nhật: CI đã XANH.** Commit `3fbcb07` (sửa lỗi nút chụp không lưu ảnh
+vào thư viện + thêm thông báo khi chụp) build thành công — cả
 `:domain:test` lẫn `:app:assembleDebug`. Đây là commit mới nhất trên
-branch tính đến lúc ghi chú này. Chi tiết audit tổng thể + 2 lỗi đã sửa:
-xem mục "Audit layout/logic toàn app" bên dưới.
+branch tính đến lúc ghi chú này. Chi tiết:
+xem mục "Sửa lỗi nút chụp ảnh" và "Audit layout/logic toàn app" bên dưới.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
 trước khi giả định branch đang ở trạng thái build được.
+
+## Sửa lỗi nút chụp ảnh (2026-07-29)
+
+Bạn báo bấm nút chụp không thấy lưu ảnh. Kiểm tra code xác nhận **đây là 2
+lỗi thật**, không phải thiếu tính năng:
+
+1. `capturePhoto()` (`CameraXController.kt`) lưu ảnh vào
+   `getExternalFilesDir(Pictures)` — thư mục **riêng của app**, không được
+   quét vào MediaStore nên **không hiện trong Gallery/Thư viện ảnh** dù
+   thực tế file vẫn được ghi ra đĩa mỗi lần chụp.
+2. `CameraPreviewViewModel` đã emit `captureEvents` (thành công/thất bại)
+   nhưng **không có nơi nào trong UI lắng nghe** — bấm chụp xong không có
+   thông báo gì, giống như nút không hoạt động.
+
+**Đã sửa:**
+- Lưu ảnh qua `MediaStore` (`Pictures/FrameWise`, dùng `RELATIVE_PATH` từ
+  API 29+) — giờ ảnh hiện trong Gallery như ảnh chụp bằng app Camera bình
+  thường. Đổi `CapturedPhoto.filePath` → `uri` (giờ là content:// URI, lan
+  ra `CaptureHistoryEntry`/`CaptureEvent`); `CaptureHistoryPanel` đọc ảnh
+  qua `ContentResolver.openInputStream()` thay vì `BitmapFactory.decodeFile()`.
+- Thêm quyền `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion="28"`) — cần cho ghi
+  MediaStore trên máy Android 8-9 (API 26-28); từ Android 10 trở lên
+  (scoped storage) không cần quyền này. Xin cùng lúc với quyền Camera
+  (`CameraPermissionState.kt`), chỉ trên các máy API <29.
+- `CameraPreviewRoute` giờ lắng nghe `captureEvents` và hiện Snackbar "Đã
+  lưu ảnh vào thư viện" / báo lỗi cụ thể nếu chụp thất bại.
+
+**Build CI xanh ở commit `3fbcb07`.** Vẫn cần bạn xác nhận trên máy thật:
+chụp ảnh → có hiện Snackbar không → mở Gallery xem ảnh có xuất hiện trong
+album "FrameWise" không.
 
 ## Audit layout/logic toàn app (2026-07-29)
 
