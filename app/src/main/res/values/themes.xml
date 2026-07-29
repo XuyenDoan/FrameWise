@@ -1,0 +1,13 @@
+<resources>
+    <!--
+        Compose owns all real theming (see core:designsystem FrameWiseTheme).
+        This XML theme only needs to exist so the Activity has a valid
+        android:theme before the first Compose frame draws (window
+        background, status bar) — no widget styling happens here.
+    -->
+    <style name="Theme.FrameWise" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/framewise_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
