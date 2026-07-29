@@ -17,11 +17,11 @@
 |---|---|---|
 | 1 | Phân tích yêu cầu, kiến trúc Clean Architecture + MVVM, multi-module | `docs/PHASE_1_ARCHITECTURE.md` |
 | 2 | Setup project multi-module + CameraX Preview cơ bản | `docs/PHASE_2_CAMERAX_SETUP.md` |
-| 3 | Camera controls đầy đủ (exposure slider, tap-to-focus) | trong `docs/PHASE_2_CAMERAX_SETUP.md` (bổ sung) |
-| 4 | Grid Overlay (Rule of Thirds/Golden Ratio/Golden Triangle/Square/Diagonal) vẽ bằng Canvas | `feature/overlay/GridOverlay.kt` |
-| 5 | Horizon Level (rotation vector sensor) | `data/sensor/` |
-| 6 | ML Kit Face + Object Detection, bounding box overlay | `data/vision/MlKitFrameAnalyzer.kt` |
-| 7 | Composition Engine (rule of thirds, headroom, lighting, score 0-100) | `domain/usecase/AnalyzeCompositionUseCase.kt` (có unit test) |
+| 3 | Camera controls đầy đủ (exposure slider, tap-to-focus) | `docs/PHASE_3_TO_7.md` |
+| 4 | Grid Overlay (Rule of Thirds/Golden Ratio/Golden Triangle/Square/Diagonal) vẽ bằng Canvas | `docs/PHASE_3_TO_7.md` |
+| 5 | Horizon Level (rotation vector sensor) | `docs/PHASE_3_TO_7.md` |
+| 6 | ML Kit Face + Object Detection, bounding box overlay | `docs/PHASE_3_TO_7.md` |
+| 7 | Composition Engine (rule of thirds, headroom, lighting, score 0-100) | `docs/PHASE_3_TO_7.md` |
 | 8 | Scene Recognition (ML Kit Image Labeling) + Photography Tips | `data/vision/SceneClassifier.kt`, `domain/usecase/GetPhotographyTipsUseCase.kt` |
 | 9 | AR Guidance arrows (Canvas) + Voice Assistant (TextToSpeech, debounce) | `feature/overlay/ArGuidanceArrow.kt`, `feature/camerapreview/VoiceGuidanceSpeaker.kt` |
 | 10 | Capture History ("before/after" theo điểm số, không phải AI sinh ảnh) | `feature/camerapreview/CaptureHistoryPanel.kt` |
@@ -29,9 +29,9 @@
 | Horizon line detection | Ước lượng vị trí đường chân trời trong ảnh (heuristic gradient độ sáng), đưa về gần 1/3 khi không có chủ thể chính | `data/vision/HorizonLineDetector.kt` (có ghi rõ giới hạn về rotation) |
 
 Toàn bộ tài liệu chi tiết từng phase nằm trong `docs/`:
-- `PHASE_1_ARCHITECTURE.md`, `PHASE_2_CAMERAX_SETUP.md`, `PHASE_8_TO_10.md`,
-  `POSE_ASSISTANT.md`, `COMPOSITION_CHECKLIST.md` (đối chiếu tiêu chí giải
-  ảnh uy tín Sony WPA/IPA với tính năng app).
+- `PHASE_1_ARCHITECTURE.md`, `PHASE_2_CAMERAX_SETUP.md`, `PHASE_3_TO_7.md`,
+  `PHASE_8_TO_10.md`, `POSE_ASSISTANT.md`, `COMPOSITION_CHECKLIST.md` (đối
+  chiếu tiêu chí giải ảnh uy tín Sony WPA/IPA với tính năng app).
 
 ## Trạng thái build
 
