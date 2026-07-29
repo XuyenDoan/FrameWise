@@ -26,5 +26,8 @@ include(":core:ui")
 include(":domain")
 
 include(":data:camera")
+include(":data:sensor")
+include(":data:vision")
 
+include(":feature:overlay")
 include(":feature:camerapreview")

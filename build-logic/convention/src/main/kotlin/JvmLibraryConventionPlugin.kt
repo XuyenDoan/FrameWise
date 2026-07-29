@@ -28,6 +28,7 @@ class JvmLibraryConventionPlugin : Plugin<Project> {
 
             dependencies {
                 add("implementation", libs.findLibrary("kotlinx-coroutines-core").get())
+                add("implementation", "javax.inject:javax.inject:1")
                 add("testImplementation", libs.findLibrary("junit").get())
                 add("testImplementation", libs.findLibrary("truth").get())
                 add("testImplementation", libs.findLibrary("kotlinx-coroutines-test").get())

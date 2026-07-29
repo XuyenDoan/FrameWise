@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.Environment
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -19,6 +21,8 @@ import com.framewise.domain.model.LensFacing
 import com.framewise.domain.repository.CameraRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -45,9 +49,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 @Singleton
 class CameraXController @Inject constructor(
     @ApplicationContext private val context: Context,
-) : CameraRepository, CameraPreviewBinder {
+) : CameraRepository, CameraPreviewBinder, CameraFrameProvider {
 
     private val controllerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val analysisExecutor = Executors.newSingleThreadExecutor()
 
     private val _cameraState = MutableStateFlow(CameraState())
     override val cameraState: StateFlow<CameraState> = _cameraState.asStateFlow()
@@ -60,6 +65,15 @@ class CameraXController @Inject constructor(
     private val preview = Preview.Builder().build()
     private val imageCapture = ImageCapture.Builder()
         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+        .build()
+
+    // Deliberately lower resolution than the capture pipeline: ML inference
+    // only needs enough detail to find subjects/lighting, not full quality,
+    // and keeping it small is what keeps analysis from competing with the
+    // preview's frame rate.
+    private val imageAnalysis = ImageAnalysis.Builder()
+        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+        .setTargetResolution(android.util.Size(640, 480))
         .build()
 
     private var lensFacing = LensFacing.BACK
@@ -75,6 +89,20 @@ class CameraXController @Inject constructor(
             preview.setSurfaceProvider(previewView.surfaceProvider)
             rebindUseCases(provider, lifecycleOwner)
         }
+    }
+
+    override fun focusAt(x: Float, y: Float) {
+        val view = previewView ?: return
+        val activeCamera = camera ?: return
+        val point = view.meteringPointFactory.createPoint(x, y)
+        val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+            .setAutoCancelDuration(3, TimeUnit.SECONDS)
+            .build()
+        activeCamera.cameraControl.startFocusAndMetering(action)
+    }
+
+    override fun setFrameAnalyzer(analyzer: ImageAnalysis.Analyzer) {
+        imageAnalysis.setAnalyzer(analysisExecutor, analyzer)
     }
 
     override fun unbind() {
@@ -156,7 +184,7 @@ class CameraXController @Inject constructor(
         }
 
         provider.unbindAll()
-        val boundCamera = provider.bindToLifecycle(owner, cameraSelector, preview, imageCapture)
+        val boundCamera = provider.bindToLifecycle(owner, cameraSelector, preview, imageCapture, imageAnalysis)
         camera = boundCamera
 
         val cameraInfo = boundCamera.cameraInfo

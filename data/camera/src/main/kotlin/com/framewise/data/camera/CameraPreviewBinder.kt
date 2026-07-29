@@ -20,4 +20,13 @@ import androidx.lifecycle.LifecycleOwner
 interface CameraPreviewBinder {
     fun bind(lifecycleOwner: LifecycleOwner, previewView: PreviewView)
     fun unbind()
+
+    /**
+     * Tap-to-focus. [x]/[y] are in the [PreviewView]'s own pixel coordinate
+     * space (e.g. from a Compose `Offset` inside a `pointerInput` on top of
+     * the same-sized `AndroidView`) — converted internally via
+     * `PreviewView.getMeteringPointFactory()`, which is why this lives here
+     * rather than on the platform-agnostic `CameraRepository`.
+     */
+    fun focusAt(x: Float, y: Float)
 }

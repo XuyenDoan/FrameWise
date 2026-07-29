@@ -1,14 +1,17 @@
 package com.framewise.feature.camerapreview
 
-import com.framewise.domain.model.CameraState
+import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.FlashMode
+import com.framewise.domain.model.GridType
+import com.framewise.domain.model.GuidanceType
+import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LensFacing
 
 /**
- * Immutable UI state for the camera screen. A 1:1 mapping of
- * [CameraState] today; kept as its own type (rather than reusing the
- * domain model directly) so UI-only fields (e.g. [isCapturing]) can be
- * added later without leaking into domain.
+ * Immutable UI state for the camera screen — the single source of truth the
+ * Composable reads. Built in the ViewModel by combining every upstream
+ * repository Flow (camera/sensor/vision) plus the composition-analysis use
+ * case's output, so the UI layer never touches those repositories directly.
  */
 data class CameraPreviewUiState(
     val lensFacing: LensFacing = LensFacing.BACK,
@@ -17,19 +20,15 @@ data class CameraPreviewUiState(
     val zoomRatio: Float = 1f,
     val minZoomRatio: Float = 1f,
     val maxZoomRatio: Float = 1f,
+    val exposureIndex: Int = 0,
+    val exposureRange: IntRange = 0..0,
     val isReady: Boolean = false,
     val isCapturing: Boolean = false,
-)
-
-internal fun CameraState.toUiState(isCapturing: Boolean = false) = CameraPreviewUiState(
-    lensFacing = lensFacing,
-    flashMode = flashMode,
-    isTorchAvailable = isTorchAvailable,
-    zoomRatio = zoomRatio,
-    minZoomRatio = minZoomRatio,
-    maxZoomRatio = maxZoomRatio,
-    isReady = isReady,
-    isCapturing = isCapturing,
+    val gridType: GridType = GridType.RULE_OF_THIRDS,
+    val horizonState: HorizonState = HorizonState(),
+    val subjects: List<DetectedSubject> = emptyList(),
+    val guidanceMessages: List<GuidanceType> = listOf(GuidanceType.GOOD),
+    val compositionScore: Int = 100,
 )
 
 sealed interface CaptureEvent {
