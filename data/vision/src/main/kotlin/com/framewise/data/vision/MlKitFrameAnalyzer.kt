@@ -3,8 +3,10 @@ package com.framewise.data.vision
 import android.graphics.Rect
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import com.framewise.data.vision.pose.PoseFrameProcessor
 import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.NormalizedRect
+import com.framewise.domain.model.PoseLandmark
 import com.framewise.domain.model.SceneType
 import com.framewise.domain.model.SubjectLabel
 import com.framewise.domain.model.VisionResult
@@ -33,7 +35,9 @@ import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
  * runs separately, throttled to every [SCENE_ANALYSIS_INTERVAL]th frame.
  */
 internal class MlKitFrameAnalyzer(
+    private val poseFrameProcessor: PoseFrameProcessor,
     private val onResult: (VisionResult) -> Unit,
+    private val onPoseResult: (List<PoseLandmark>) -> Unit,
 ) : ImageAnalysis.Analyzer {
 
     private val faceDetector = FaceDetection.getClient(
@@ -56,6 +60,7 @@ internal class MlKitFrameAnalyzer(
     // detectors that actually need to be near-real-time.
     private var frameCount = 0
     private var lastScene = SceneType.UNKNOWN
+    private var lastPoseTimestampMs = 0L
 
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
@@ -74,6 +79,7 @@ internal class MlKitFrameAnalyzer(
 
         frameCount++
         val shouldClassifyScene = frameCount % SCENE_ANALYSIS_INTERVAL == 0
+        val shouldDetectPose = poseFrameProcessor.isReady && frameCount % POSE_ANALYSIS_INTERVAL == 0
 
         faceDetector.process(inputImage)
             .addOnCompleteListener { faceTask ->
@@ -87,6 +93,14 @@ internal class MlKitFrameAnalyzer(
                             val subjects = buildSubjects(faces, objects, analysisWidth, analysisHeight)
                             val primary = subjects.maxByOrNull { it.boundingBox.area }
                             val lighting = LuminanceEvaluator.evaluate(imageProxy, primary?.boundingBox)
+
+                            if (shouldDetectPose) {
+                                // MediaPipe requires strictly increasing timestamps for VIDEO mode.
+                                val timestampMs = (imageProxy.imageInfo.timestamp / 1_000_000)
+                                    .coerceAtLeast(lastPoseTimestampMs + 1)
+                                lastPoseTimestampMs = timestampMs
+                                onPoseResult(poseFrameProcessor.detect(mediaImage, rotationDegrees, timestampMs))
+                            }
 
                             onResult(VisionResult(subjects = subjects, lighting = lighting, scene = lastScene))
                             imageProxy.close()
@@ -147,5 +161,6 @@ internal class MlKitFrameAnalyzer(
 
     private companion object {
         const val SCENE_ANALYSIS_INTERVAL = 15
+        const val POSE_ANALYSIS_INTERVAL = 5
     }
 }

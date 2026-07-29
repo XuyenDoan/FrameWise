@@ -42,13 +42,14 @@ quả AI không có thật.
 - Thumbnail decode bằng `BitmapFactory` trên `Dispatchers.IO`, không thêm
   thư viện load ảnh (Coil...) vì chỉ cần hiển thị vài ảnh nhỏ trong phiên.
 
+## Pose Assistant (MediaPipe Pose Landmarker) — bổ sung sau
+
+Đã triển khai ở lượt tiếp theo (xem `docs/POSE_ASSISTANT.md` để biết chi
+tiết + giới hạn quan trọng cần biết trước khi test, đặc biệt việc app cần
+mạng ở lần chạy đầu để tải model MediaPipe).
+
 ## Việc CHƯA làm (từ roadmap Phase 1) và vì sao
 
-- **Pose Assistant (MediaPipe Pose Landmarker)**: chưa triển khai. Đây là
-  hạng mục tốn công sức nhất còn lại (thêm dependency MediaPipe Tasks,
-  landmark 33 điểm, suy luận hướng vai/đầu thành gợi ý tư thế) — cần một
-  phase riêng để làm đúng mức, tránh vội vàng viết mù không kiểm chứng
-  được logic hình học phức tạp.
 - **Horizon line detection trong ảnh** (khác sensor): vẫn dùng sensor góc
   nghiêng, chưa dò đường chân trời thật trong khung hình bằng thị giác máy
   tính — đã ghi trong `docs/COMPOSITION_CHECKLIST.md`.

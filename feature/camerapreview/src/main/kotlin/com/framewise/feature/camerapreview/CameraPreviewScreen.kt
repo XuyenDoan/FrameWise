@@ -63,6 +63,7 @@ import com.framewise.feature.overlay.GridOverlay
 import com.framewise.feature.overlay.GuidanceBanner
 import com.framewise.feature.overlay.HorizonLevelOverlay
 import com.framewise.feature.overlay.PhotographyTipCaption
+import com.framewise.feature.overlay.PoseGuidanceBanner
 import com.framewise.feature.overlay.SceneBadge
 
 @Composable
@@ -222,6 +223,7 @@ private fun CameraPreviewScreen(
                         guidance = uiState.guidanceMessages.minByOrNull { it.priority } ?: GuidanceType.GOOD,
                     )
                     GuidanceBanner(messages = uiState.guidanceMessages)
+                    PoseGuidanceBanner(suggestions = uiState.poseSuggestions)
                 }
             }
 

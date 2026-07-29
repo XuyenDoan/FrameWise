@@ -12,9 +12,11 @@ import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.VisionResult
 import com.framewise.domain.repository.CameraRepository
+import com.framewise.domain.repository.PoseRepository
 import com.framewise.domain.repository.SensorRepository
 import com.framewise.domain.repository.VisionRepository
 import com.framewise.domain.usecase.AnalyzeCompositionUseCase
+import com.framewise.domain.usecase.AnalyzePoseUseCase
 import com.framewise.domain.usecase.GetPhotographyTipsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -35,7 +37,9 @@ class CameraPreviewViewModel @Inject constructor(
     private val previewBinder: CameraPreviewBinder,
     private val sensorRepository: SensorRepository,
     private val visionRepository: VisionRepository,
+    private val poseRepository: PoseRepository,
     private val analyzeComposition: AnalyzeCompositionUseCase,
+    private val analyzePose: AnalyzePoseUseCase,
     private val getPhotographyTips: GetPhotographyTipsUseCase,
     private val voiceSpeaker: VoiceGuidanceSpeaker,
 ) : ViewModel() {
@@ -62,7 +66,13 @@ class CameraPreviewViewModel @Inject constructor(
         CoreState(cameraState, horizonState, visionResult, gridType, capturing)
     }
 
-    val uiState: StateFlow<CameraPreviewUiState> = combine(coreState, isVoiceEnabled) { core, voiceEnabled ->
+    private val poseSuggestions = poseRepository.poseLandmarks.map { landmarks -> analyzePose(landmarks) }
+
+    val uiState: StateFlow<CameraPreviewUiState> = combine(
+        coreState,
+        isVoiceEnabled,
+        poseSuggestions,
+    ) { core, voiceEnabled, poseSuggestionList ->
         val guidance = analyzeComposition(vision = core.visionResult, horizon = core.horizonState)
         val cameraState = core.cameraState
 
@@ -85,6 +95,7 @@ class CameraPreviewViewModel @Inject constructor(
             scene = core.visionResult.scene,
             photographyTip = getPhotographyTips(core.visionResult.scene),
             isVoiceEnabled = voiceEnabled,
+            poseSuggestions = poseSuggestionList,
         )
     }
         .stateIn(

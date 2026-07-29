@@ -11,7 +11,7 @@ class GetPhotographyTipsUseCaseTest {
     @Test
     fun `every scene type returns a non-blank tip`() {
         SceneType.entries.forEach { scene ->
-            assertThat(useCase(scene)).isNotBlank()
+            assertThat(useCase(scene).isNotBlank()).isTrue()
         }
     }
 

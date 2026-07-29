@@ -6,6 +6,7 @@ import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LensFacing
+import com.framewise.domain.model.PoseSuggestion
 import com.framewise.domain.model.SceneType
 
 /**
@@ -33,6 +34,7 @@ data class CameraPreviewUiState(
     val scene: SceneType = SceneType.UNKNOWN,
     val photographyTip: String = "",
     val isVoiceEnabled: Boolean = false,
+    val poseSuggestions: List<PoseSuggestion> = listOf(PoseSuggestion.NONE),
 )
 
 sealed interface CaptureEvent {
