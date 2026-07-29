@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -51,11 +54,16 @@ import com.framewise.core.ui.CameraControlButton
 import com.framewise.core.ui.ShutterButton
 import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.GridType
+import com.framewise.domain.model.GuidanceType
+import com.framewise.domain.model.SceneType
+import com.framewise.feature.overlay.ArGuidanceArrow
 import com.framewise.feature.overlay.BoundingBoxOverlay
 import com.framewise.feature.overlay.CompositionScoreBadge
 import com.framewise.feature.overlay.GridOverlay
 import com.framewise.feature.overlay.GuidanceBanner
 import com.framewise.feature.overlay.HorizonLevelOverlay
+import com.framewise.feature.overlay.PhotographyTipCaption
+import com.framewise.feature.overlay.SceneBadge
 
 @Composable
 fun CameraPreviewRoute(
@@ -63,6 +71,7 @@ fun CameraPreviewRoute(
     viewModel: CameraPreviewViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val captureHistory by viewModel.captureHistory.collectAsState()
     val permissionState = rememberCameraPermissionState()
 
     LaunchedEffect(Unit) {
@@ -74,6 +83,7 @@ fun CameraPreviewRoute(
     if (permissionState.hasPermission) {
         CameraPreviewScreen(
             uiState = uiState,
+            captureHistory = captureHistory,
             onBindPreview = viewModel::bindPreview,
             onUnbindPreview = viewModel::unbindPreview,
             onToggleLens = viewModel::onToggleLens,
@@ -82,6 +92,7 @@ fun CameraPreviewRoute(
             onExposureChange = viewModel::onExposureChange,
             onFocusTap = viewModel::onFocusTap,
             onGridTypeSelected = viewModel::onGridTypeSelected,
+            onToggleVoice = viewModel::onToggleVoice,
             onCapture = viewModel::onCapture,
             modifier = modifier,
         )
@@ -96,6 +107,7 @@ fun CameraPreviewRoute(
 @Composable
 private fun CameraPreviewScreen(
     uiState: CameraPreviewUiState,
+    captureHistory: List<CaptureHistoryEntry>,
     onBindPreview: (LifecycleOwner, PreviewView) -> Unit,
     onUnbindPreview: () -> Unit,
     onToggleLens: () -> Unit,
@@ -104,6 +116,7 @@ private fun CameraPreviewScreen(
     onExposureChange: (Int) -> Unit,
     onFocusTap: (Float, Float) -> Unit,
     onGridTypeSelected: (GridType) -> Unit,
+    onToggleVoice: () -> Unit,
     onCapture: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -119,6 +132,7 @@ private fun CameraPreviewScreen(
     )
 
     val latestZoomRatio = rememberUpdatedState(uiState.zoomRatio)
+    var showHistory by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -171,6 +185,16 @@ private fun CameraPreviewScreen(
                             onSelected = onGridTypeSelected,
                         )
                     }
+                    CameraControlButton(
+                        icon = if (uiState.isVoiceEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                        contentDescription = "Voice guidance",
+                        onClick = onToggleVoice,
+                    )
+                    CameraControlButton(
+                        icon = Icons.Filled.History,
+                        contentDescription = "Capture history",
+                        onClick = { showHistory = !showHistory },
+                    )
                 }
 
                 CompositionScoreBadge(score = uiState.compositionScore)
@@ -187,7 +211,18 @@ private fun CameraPreviewScreen(
             }
 
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                GuidanceBanner(messages = uiState.guidanceMessages)
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (uiState.scene != SceneType.UNKNOWN) {
+                        SceneBadge(scene = uiState.scene)
+                        if (uiState.photographyTip.isNotBlank()) {
+                            PhotographyTipCaption(tip = uiState.photographyTip)
+                        }
+                    }
+                    ArGuidanceArrow(
+                        guidance = uiState.guidanceMessages.minByOrNull { it.priority } ?: GuidanceType.GOOD,
+                    )
+                    GuidanceBanner(messages = uiState.guidanceMessages)
+                }
             }
 
             ExposureSlider(
@@ -207,6 +242,26 @@ private fun CameraPreviewScreen(
                 } else {
                     ShutterButton(onClick = onCapture, enabled = uiState.isReady)
                 }
+            }
+        }
+
+        if (showHistory) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(24.dp)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .pointerInput(Unit) { detectTapGestures { showHistory = false } },
+                contentAlignment = Alignment.Center,
+            ) {
+                CaptureHistoryPanel(
+                    history = captureHistory,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pointerInput(Unit) { detectTapGestures { } },
+                )
             }
         }
     }

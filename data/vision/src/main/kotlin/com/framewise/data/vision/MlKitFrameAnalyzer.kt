@@ -5,12 +5,15 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.NormalizedRect
+import com.framewise.domain.model.SceneType
 import com.framewise.domain.model.SubjectLabel
 import com.framewise.domain.model.VisionResult
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
@@ -26,7 +29,8 @@ import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
  * See [com.framewise.domain.model.SubjectLabel]'s KDoc for why detected
  * objects only ever come back as [SubjectLabel.FOOD] or
  * [SubjectLabel.OBJECT] — ML Kit's unbundled classifier can't tell species
- * apart.
+ * apart. Scene classification (via ML Kit Image Labeling + [SceneClassifier])
+ * runs separately, throttled to every [SCENE_ANALYSIS_INTERVAL]th frame.
  */
 internal class MlKitFrameAnalyzer(
     private val onResult: (VisionResult) -> Unit,
@@ -45,6 +49,14 @@ internal class MlKitFrameAnalyzer(
             .build(),
     )
 
+    private val imageLabeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+
+    // Scene rarely changes frame-to-frame, unlike subject position - running
+    // the labeler on every frame would be wasted work competing with the
+    // detectors that actually need to be near-real-time.
+    private var frameCount = 0
+    private var lastScene = SceneType.UNKNOWN
+
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage == null) {
@@ -60,6 +72,9 @@ internal class MlKitFrameAnalyzer(
             imageProxy.width to imageProxy.height
         }
 
+        frameCount++
+        val shouldClassifyScene = frameCount % SCENE_ANALYSIS_INTERVAL == 0
+
         faceDetector.process(inputImage)
             .addOnCompleteListener { faceTask ->
                 val faces = if (faceTask.isSuccessful) faceTask.result else emptyList()
@@ -68,12 +83,26 @@ internal class MlKitFrameAnalyzer(
                     .addOnCompleteListener { objectTask ->
                         val objects = if (objectTask.isSuccessful) objectTask.result else emptyList()
 
-                        val subjects = buildSubjects(faces, objects, analysisWidth, analysisHeight)
-                        val primary = subjects.maxByOrNull { it.boundingBox.area }
-                        val lighting = LuminanceEvaluator.evaluate(imageProxy, primary?.boundingBox)
+                        fun finish() {
+                            val subjects = buildSubjects(faces, objects, analysisWidth, analysisHeight)
+                            val primary = subjects.maxByOrNull { it.boundingBox.area }
+                            val lighting = LuminanceEvaluator.evaluate(imageProxy, primary?.boundingBox)
 
-                        onResult(VisionResult(subjects = subjects, lighting = lighting))
-                        imageProxy.close()
+                            onResult(VisionResult(subjects = subjects, lighting = lighting, scene = lastScene))
+                            imageProxy.close()
+                        }
+
+                        if (shouldClassifyScene) {
+                            imageLabeler.process(inputImage)
+                                .addOnCompleteListener { labelTask ->
+                                    if (labelTask.isSuccessful) {
+                                        lastScene = SceneClassifier.classify(labelTask.result)
+                                    }
+                                    finish()
+                                }
+                        } else {
+                            finish()
+                        }
                     }
             }
     }
@@ -115,4 +144,8 @@ internal class MlKitFrameAnalyzer(
         right = (right.toFloat() / width).coerceIn(0f, 1f),
         bottom = (bottom.toFloat() / height).coerceIn(0f, 1f),
     )
+
+    private companion object {
+        const val SCENE_ANALYSIS_INTERVAL = 15
+    }
 }

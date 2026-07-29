@@ -6,6 +6,7 @@ import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LensFacing
+import com.framewise.domain.model.SceneType
 
 /**
  * Immutable UI state for the camera screen — the single source of truth the
@@ -29,6 +30,9 @@ data class CameraPreviewUiState(
     val subjects: List<DetectedSubject> = emptyList(),
     val guidanceMessages: List<GuidanceType> = listOf(GuidanceType.GOOD),
     val compositionScore: Int = 100,
+    val scene: SceneType = SceneType.UNKNOWN,
+    val photographyTip: String = "",
+    val isVoiceEnabled: Boolean = false,
 )
 
 sealed interface CaptureEvent {

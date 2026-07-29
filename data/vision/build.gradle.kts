@@ -17,5 +17,6 @@ dependencies {
     implementation(libs.findLibrary("androidx-camera-core").get())
     implementation(libs.findLibrary("mlkit-object-detection").get())
     implementation(libs.findLibrary("mlkit-face-detection").get())
+    implementation(libs.findLibrary("mlkit-image-labeling").get())
     implementation(libs.findLibrary("kotlinx-coroutines-android").get())
 }

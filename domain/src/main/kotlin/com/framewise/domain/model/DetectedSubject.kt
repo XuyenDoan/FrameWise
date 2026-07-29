@@ -38,4 +38,5 @@ enum class LightingState {
 data class VisionResult(
     val subjects: List<DetectedSubject> = emptyList(),
     val lighting: LightingState = LightingState.GOOD,
+    val scene: SceneType = SceneType.UNKNOWN,
 )
