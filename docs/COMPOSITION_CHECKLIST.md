@@ -17,7 +17,7 @@
 
 | # | Tiêu chí | FrameWise hỗ trợ? | Ghi chú |
 |---|---|---|---|
-| 1 | Lấy nét sắc vào mắt/khuôn mặt chủ thể | ⚠️ Một phần | Tap-to-focus đã có; auto lấy nét ưu tiên vào face bounding box (ML Kit Face Detection) **chưa** tự động — hiện người dùng phải tự tap vào mắt |
+| 1 | Lấy nét sắc vào mắt/khuôn mặt chủ thể | ⚠️ Một phần | Tap-to-focus đã có; giờ có thể chạm vào khung khuôn mặt/chủ thể để chọn + lấy nét thật vào đúng người đó khi có nhiều người trong khung (xem `docs/SHOOTING_MODES.md`) — nhưng vẫn là chạm thủ công vào khung mặt, **chưa** tự động lấy nét chính xác vào mắt (ML Kit Face Detection chỉ trả bounding box khuôn mặt, không có toạ độ mắt riêng) |
 | 2 | Bố cục theo quy tắc 1/3 hoặc có chủ đích rõ ràng, không đặt giữa ngẫu nhiên | ✅ Có | `AnalyzeCompositionUseCase` so vị trí chủ thể với 4 giao điểm 1/3, sinh guidance MOVE_LEFT/RIGHT/RAISE/LOWER_CAMERA |
 | 3 | Khoảng trống đầu (headroom) hợp lý | ✅ Có | Khi chủ thể là FACE (ML Kit Face Detection), `AnalyzeCompositionUseCase` tính khoảng trống phía trên khuôn mặt so với mép khung, so với ngưỡng 5%-15% chiều cao khung → RAISE_CAMERA/LOWER_CAMERA |
 | 4 | Hậu cảnh không gây xao nhãng, tách chủ thể khỏi nền | ⚠️ Một phần | MediaPipe Selfie Segmentation (`BackgroundSegmentationProcessor`) ước lượng độ "rối" hậu cảnh qua độ gồ ghề của mask tách nền/chủ thể, sinh guidance `BUSY_BACKGROUND`. **Đây là proxy gián tiếp** (đo hình dạng mask, không đo trực tiếp độ rối hình ảnh thật) — xem giới hạn trong `BackgroundSegmentationProcessor.kt` |

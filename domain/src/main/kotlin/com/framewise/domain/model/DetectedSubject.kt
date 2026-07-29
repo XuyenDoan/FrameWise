@@ -22,11 +22,26 @@ enum class SubjectLabel {
     OBJECT,
 }
 
+/**
+ * [trackingId] comes straight from ML Kit's own tracker (Face Detection's
+ * `enableTracking()`, Object Detection's automatic STREAM_MODE tracking) -
+ * not something this app computes itself. It lets the UI let a user tap a
+ * subject and have that selection follow it across frames. It's still only
+ * as reliable as ML Kit's tracker: null when tracking wasn't available for
+ * that detection, and a selection tied to an id that stops appearing (the
+ * subject left the frame, tracking was lost, occlusion) simply stops
+ * matching anything - callers must fail back to no-selection rather than
+ * guess, they must never invent a substitute.
+ */
 data class DetectedSubject(
     val boundingBox: NormalizedRect,
     val label: SubjectLabel,
     val confidence: Float,
+    val trackingId: Int? = null,
 )
+
+/** Stable-ish key for tying a user's tap to this subject across frames - see [DetectedSubject.trackingId]. */
+fun DetectedSubject.trackingKey(): String? = trackingId?.let { "$label:$it" }
 
 enum class LightingState {
     GOOD,

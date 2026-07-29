@@ -6,8 +6,10 @@ import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LightingState
 import com.framewise.domain.model.NormalizedRect
+import com.framewise.domain.model.ShootingMode
 import com.framewise.domain.model.SubjectLabel
 import com.framewise.domain.model.VisionResult
+import com.framewise.domain.model.trackingKey
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -165,6 +167,91 @@ class AnalyzeCompositionUseCaseTest {
         )
 
         assertThat(result.messages).doesNotContain(GuidanceType.BUSY_BACKGROUND)
+    }
+
+    @Test
+    fun `landscape mode ignores busy background even with a subject present`() {
+        val subject = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.PERSON,
+            confidence = 0.9f,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(subject), backgroundState = BackgroundState.BUSY),
+            horizon = HorizonState.fromAngle(0f),
+            mode = ShootingMode.LANDSCAPE,
+        )
+
+        assertThat(result.messages).doesNotContain(GuidanceType.BUSY_BACKGROUND)
+    }
+
+    @Test
+    fun `portrait mode auto-picks the face over a larger non-face subject`() {
+        val face = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.FACE,
+            confidence = 0.95f,
+        )
+        val largerObject = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0f, top = 0f, right = 0.9f, bottom = 0.9f),
+            label = SubjectLabel.OBJECT,
+            confidence = 0.8f,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(largerObject, face)),
+            horizon = HorizonState.fromAngle(0f),
+            mode = ShootingMode.PORTRAIT,
+        )
+
+        // The larger OBJECT would trigger MOVE_CLOSER/FARTHER framing logic
+        // if it were picked as primary instead of the smaller FACE; with
+        // PORTRAIT mode preferring FACE, the face's centered box (already
+        // on a thirds point, correct headroom) should score cleanly.
+        assertThat(result.score).isEqualTo(100)
+    }
+
+    @Test
+    fun `animal mode auto-picks the non-face subject over a face`() {
+        val face = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.4f, top = 0.4f, right = 0.6f, bottom = 0.6f),
+            label = SubjectLabel.FACE,
+            confidence = 0.95f,
+        )
+        val animal = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.OBJECT,
+            confidence = 0.8f,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(face, animal)),
+            horizon = HorizonState.fromAngle(0f),
+            mode = ShootingMode.ANIMAL,
+        )
+
+        assertThat(result.score).isEqualTo(100)
+    }
+
+    @Test
+    fun `a tapped subject key overrides the auto-picked primary subject`() {
+        val bigButUnselected = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.4f, top = 0.4f, right = 0.6f, bottom = 0.6f),
+            label = SubjectLabel.PERSON,
+            confidence = 0.9f,
+            trackingId = 1,
+        )
+        val smallButSelected = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.PERSON,
+            confidence = 0.9f,
+            trackingId = 2,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(bigButUnselected, smallButSelected)),
+            horizon = HorizonState.fromAngle(0f),
+            selectedSubjectKey = smallButSelected.trackingKey(),
+        )
+
+        assertThat(result.score).isEqualTo(100)
     }
 
     @Test

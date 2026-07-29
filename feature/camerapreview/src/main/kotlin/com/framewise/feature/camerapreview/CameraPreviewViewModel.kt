@@ -7,10 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.framewise.data.camera.CameraPreviewBinder
 import com.framewise.domain.model.CameraCaptureResult
 import com.framewise.domain.model.CameraState
+import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
+import com.framewise.domain.model.ShootingMode
 import com.framewise.domain.model.VisionResult
+import com.framewise.domain.model.trackingKey
 import com.framewise.domain.repository.CameraRepository
 import com.framewise.domain.repository.PoseRepository
 import com.framewise.domain.repository.SensorRepository
@@ -47,6 +50,8 @@ class CameraPreviewViewModel @Inject constructor(
     private val isCapturing = MutableStateFlow(false)
     private val selectedGridType = MutableStateFlow(GridType.RULE_OF_THIRDS)
     private val isVoiceEnabled = MutableStateFlow(false)
+    private val shootingMode = MutableStateFlow(ShootingMode.AUTO)
+    private val selectedSubjectKey = MutableStateFlow<String?>(null)
 
     private data class CoreState(
         val cameraState: CameraState,
@@ -68,12 +73,22 @@ class CameraPreviewViewModel @Inject constructor(
 
     private val poseSuggestions = poseRepository.poseLandmarks.map { landmarks -> analyzePose(landmarks) }
 
+    private data class ModeState(val shootingMode: ShootingMode, val selectedSubjectKey: String?)
+
+    private val modeState = combine(shootingMode, selectedSubjectKey) { mode, key -> ModeState(mode, key) }
+
     val uiState: StateFlow<CameraPreviewUiState> = combine(
         coreState,
         isVoiceEnabled,
         poseSuggestions,
-    ) { core, voiceEnabled, poseSuggestionList ->
-        val guidance = analyzeComposition(vision = core.visionResult, horizon = core.horizonState)
+        modeState,
+    ) { core, voiceEnabled, poseSuggestionList, modeAndSelection ->
+        val guidance = analyzeComposition(
+            vision = core.visionResult,
+            horizon = core.horizonState,
+            mode = modeAndSelection.shootingMode,
+            selectedSubjectKey = modeAndSelection.selectedSubjectKey,
+        )
         val cameraState = core.cameraState
 
         CameraPreviewUiState(
@@ -97,6 +112,8 @@ class CameraPreviewViewModel @Inject constructor(
             isVoiceEnabled = voiceEnabled,
             poseSuggestions = poseSuggestionList,
             horizonLineY = core.visionResult.horizonLineY,
+            shootingMode = modeAndSelection.shootingMode,
+            selectedSubjectKey = modeAndSelection.selectedSubjectKey,
         )
     }
         .stateIn(
@@ -158,6 +175,22 @@ class CameraPreviewViewModel @Inject constructor(
 
     fun onToggleVoice() {
         isVoiceEnabled.value = !isVoiceEnabled.value
+    }
+
+    fun onShootingModeSelected(mode: ShootingMode) {
+        shootingMode.value = mode
+        // The auto-pick preference (see AnalyzeCompositionUseCase.pickPrimarySubject)
+        // depends on the mode, so a manual pick from the old mode could now
+        // point at the "wrong" kind of subject - clearing it lets the new
+        // mode's auto-pick take over rather than silently keeping a stale
+        // choice.
+        selectedSubjectKey.value = null
+    }
+
+    /** Tapping the currently-selected subject's box again deselects it. */
+    fun onSubjectTapped(subject: DetectedSubject) {
+        val key = subject.trackingKey() ?: return
+        selectedSubjectKey.value = if (selectedSubjectKey.value == key) null else key
     }
 
     fun onCapture() {

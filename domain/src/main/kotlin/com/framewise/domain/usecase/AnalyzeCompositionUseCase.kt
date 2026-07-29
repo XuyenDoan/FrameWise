@@ -2,27 +2,36 @@ package com.framewise.domain.usecase
 
 import com.framewise.domain.model.BackgroundState
 import com.framewise.domain.model.CompositionGuidance
+import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonLevel
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LightingState
+import com.framewise.domain.model.ShootingMode
 import com.framewise.domain.model.SubjectLabel
 import com.framewise.domain.model.VisionResult
+import com.framewise.domain.model.trackingKey
 import javax.inject.Inject
 import kotlin.math.abs
 
 /**
- * Pure function: (vision, horizon) -> guidance + score. Deliberately holds
- * no state and touches no Android API, so it's testable with plain inputs
- * (see AnalyzeCompositionUseCaseTest) without faking CameraX or ML Kit.
+ * Pure function: (vision, horizon, mode, selectedSubjectKey) -> guidance +
+ * score. Deliberately holds no state and touches no Android API, so it's
+ * testable with plain inputs (see AnalyzeCompositionUseCaseTest) without
+ * faking CameraX or ML Kit.
  */
 class AnalyzeCompositionUseCase @Inject constructor() {
 
-    operator fun invoke(vision: VisionResult, horizon: HorizonState): CompositionGuidance {
+    operator fun invoke(
+        vision: VisionResult,
+        horizon: HorizonState,
+        mode: ShootingMode = ShootingMode.AUTO,
+        selectedSubjectKey: String? = null,
+    ): CompositionGuidance {
         var score = 100
         val messages = mutableListOf<GuidanceType>()
 
-        val primarySubject = vision.subjects.maxByOrNull { it.boundingBox.area }
+        val primarySubject = pickPrimarySubject(vision.subjects, mode, selectedSubjectKey)
 
         if (primarySubject != null) {
             val box = primarySubject.boundingBox
@@ -70,7 +79,10 @@ class AnalyzeCompositionUseCase @Inject constructor() {
                 }
             }
 
-            if (vision.backgroundState == BackgroundState.BUSY) {
+            // Isolating a subject from a cluttered background is a
+            // portrait/animal concern, not a landscape one - a landscape
+            // shot usually *wants* the whole busy scene in frame.
+            if (mode != ShootingMode.LANDSCAPE && vision.backgroundState == BackgroundState.BUSY) {
                 messages += GuidanceType.BUSY_BACKGROUND
                 score -= 10
             }
@@ -113,6 +125,35 @@ class AnalyzeCompositionUseCase @Inject constructor() {
             messages = rankedMessages,
             score = score.coerceIn(0, 100),
         )
+    }
+
+    /**
+     * A user's tap always wins when it still matches something in the
+     * current frame (see [DetectedSubject.trackingId]'s KDoc for when it
+     * stops matching). Otherwise falls back to an auto pick that leans on
+     * [mode]: PORTRAIT prefers a FACE if one is present (a person
+     * incidentally in an animal shot, or vice-versa, shouldn't hijack the
+     * primary subject), ANIMAL prefers a non-FACE subject (ML Kit can't
+     * name species - see [SubjectLabel]'s KDoc - so "the animal" is
+     * whatever isn't a human face), and AUTO/LANDSCAPE make no such
+     * preference. Any preference that finds nothing just falls through to
+     * "largest box wins", same as before mode existed.
+     */
+    private fun pickPrimarySubject(
+        subjects: List<DetectedSubject>,
+        mode: ShootingMode,
+        selectedSubjectKey: String?,
+    ): DetectedSubject? {
+        if (selectedSubjectKey != null) {
+            subjects.find { it.trackingKey() == selectedSubjectKey }?.let { return it }
+        }
+
+        val preferred = when (mode) {
+            ShootingMode.PORTRAIT -> subjects.filter { it.label == SubjectLabel.FACE }
+            ShootingMode.ANIMAL -> subjects.filter { it.label != SubjectLabel.FACE }
+            ShootingMode.AUTO, ShootingMode.LANDSCAPE -> subjects
+        }
+        return preferred.ifEmpty { subjects }.maxByOrNull { it.boundingBox.area }
     }
 
     /** Nearest of the 4 rule-of-thirds intersection points to (x, y). */

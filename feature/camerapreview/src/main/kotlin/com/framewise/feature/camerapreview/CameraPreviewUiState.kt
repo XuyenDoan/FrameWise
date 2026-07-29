@@ -8,6 +8,7 @@ import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LensFacing
 import com.framewise.domain.model.PoseSuggestion
 import com.framewise.domain.model.SceneType
+import com.framewise.domain.model.ShootingMode
 
 /**
  * Immutable UI state for the camera screen — the single source of truth the
@@ -36,6 +37,8 @@ data class CameraPreviewUiState(
     val isVoiceEnabled: Boolean = false,
     val poseSuggestions: List<PoseSuggestion> = listOf(PoseSuggestion.NONE),
     val horizonLineY: Float? = null,
+    val shootingMode: ShootingMode = ShootingMode.AUTO,
+    val selectedSubjectKey: String? = null,
 )
 
 sealed interface CaptureEvent {

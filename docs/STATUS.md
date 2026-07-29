@@ -11,6 +11,30 @@
   `:domain:test` mỗi khi push lên branch này, upload artifact
   `framewise-debug-apk` (xem tab Actions trên GitHub để tải).
 
+## Chế độ chụp + chọn chủ thể + trợ giúp người mới (2026-07-29)
+
+Bạn phản hồi app chưa hỗ trợ sâu (không giải thích quy tắc, không có chế
+độ riêng chân dung/thú vật/phong cảnh, không chọn được ai để lấy nét). Đã
+làm xong, xem chi tiết đầy đủ (thiết kế, giới hạn kỹ thuật, cách test) ở
+**`docs/SHOOTING_MODES.md`**. Tóm tắt nhanh:
+
+- Thanh chọn chế độ **Tự động/Chân dung/Thú vật/Phong cảnh** (thủ công,
+  người dùng tự chọn) — đổi cách app ưu tiên chọn chủ thể + tắt/bật một số
+  quy tắc gợi ý theo chế độ.
+- **Chạm vào khung nhận diện** (khuôn mặt/vật thể) trên preview để chọn chủ
+  thể → lấy nét thật vào đúng người/vật đó + ưu tiên tuyệt đối chủ thể đó
+  cho mọi gợi ý bố cục. Dựa trên tracking ID thật của ML Kit (không phải
+  app tự đoán) — nếu ML Kit mất tracking, lựa chọn tự huỷ, không đoán bừa.
+- Nút (?) mở hộp thoại giải thích tĩnh: quy tắc 1/3, tỷ lệ vàng, headroom,
+  đường chân trời, cách dùng chế độ/chọn chủ thể — nội dung viết sẵn, không
+  gọi AI ngoài.
+- **Giới hạn cần biết:** ML Kit không phân biệt được loài vật, nên "chế độ
+  Thú vật" chỉ ưu tiên "vật thể không phải khuôn mặt người", không nhận
+  diện đúng là con gì.
+
+**Chưa test được trên thiết bị thật** — đặc biệt là độ ổn định của tracking
+ID khi chọn chủ thể (subject có "theo" đúng khi di chuyển máy nhẹ không).
+
 ## Đã làm xong (Phase 1 → 10 + Pose Assistant)
 
 | Phase | Nội dung | Tài liệu |

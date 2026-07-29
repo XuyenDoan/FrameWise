@@ -45,9 +45,13 @@ internal class MlKitFrameAnalyzer(
     private val onPoseResult: (List<PoseLandmark>) -> Unit,
 ) : ImageAnalysis.Analyzer {
 
+    // enableTracking() is required for Face.getTrackingId() to return a
+    // real id instead of -1 - see DetectedSubject.trackingId's KDoc for why
+    // this backs tap-to-select-subject.
     private val faceDetector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .enableTracking()
             .build(),
     )
 
@@ -167,6 +171,11 @@ internal class MlKitFrameAnalyzer(
                 boundingBox = face.boundingBox.toNormalizedRect(width, height),
                 label = SubjectLabel.FACE,
                 confidence = 1f,
+                // -1 means tracking wasn't available for this detection even
+                // though enableTracking() was requested (documented ML Kit
+                // fallback) - normalize that to null like DetectedObject's
+                // nullable trackingId below.
+                trackingId = face.trackingId.takeIf { it != -1 },
             )
         }
 
@@ -181,6 +190,7 @@ internal class MlKitFrameAnalyzer(
                 boundingBox = detected.boundingBox.toNormalizedRect(width, height),
                 label = label,
                 confidence = topLabel?.confidence ?: 0.5f,
+                trackingId = detected.trackingId,
             )
         }
 

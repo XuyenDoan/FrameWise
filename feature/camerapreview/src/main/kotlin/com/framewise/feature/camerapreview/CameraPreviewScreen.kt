@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.item
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,9 +24,11 @@ import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -59,10 +62,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import com.framewise.core.ui.CameraControlButton
 import com.framewise.core.ui.ShutterButton
+import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.SceneType
+import com.framewise.domain.model.ShootingMode
 import com.framewise.feature.overlay.ArGuidanceArrow
 import com.framewise.feature.overlay.BoundingBoxOverlay
 import com.framewise.feature.overlay.CompositionScoreBadge
@@ -118,6 +123,8 @@ fun CameraPreviewRoute(
                 onFocusTap = viewModel::onFocusTap,
                 onGridTypeSelected = viewModel::onGridTypeSelected,
                 onToggleVoice = viewModel::onToggleVoice,
+                onShootingModeSelected = viewModel::onShootingModeSelected,
+                onSubjectTapped = viewModel::onSubjectTapped,
                 onCapture = viewModel::onCapture,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -152,6 +159,8 @@ private fun CameraPreviewScreen(
     onFocusTap: (Float, Float) -> Unit,
     onGridTypeSelected: (GridType) -> Unit,
     onToggleVoice: () -> Unit,
+    onShootingModeSelected: (ShootingMode) -> Unit,
+    onSubjectTapped: (DetectedSubject) -> Unit,
     onCapture: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -167,7 +176,9 @@ private fun CameraPreviewScreen(
     )
 
     val latestZoomRatio = rememberUpdatedState(uiState.zoomRatio)
+    val latestSubjects = rememberUpdatedState(uiState.subjects)
     var showHistory by remember { mutableStateOf(false) }
+    var showGlossary by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -178,7 +189,28 @@ private fun CameraPreviewScreen(
                 }
             }
             .pointerInput(Unit) {
-                detectTapGestures { offset -> onFocusTap(offset.x, offset.y) }
+                detectTapGestures { offset ->
+                    // A tap first checks whether it landed inside a detected
+                    // subject's box (so the user can pick who/what to focus
+                    // on when several people/objects are in frame). Hitting
+                    // one both selects it for composition guidance AND
+                    // drives real camera autofocus to its center - a manual
+                    // tap-to-focus at that same point would do the latter
+                    // anyway, so this makes "chọn chủ thể" actually focus
+                    // the lens on them instead of only updating guidance.
+                    val tappedSubject = latestSubjects.value.firstOrNull { subject ->
+                        val box = subject.boundingBox
+                        offset.x in (box.left * size.width)..(box.right * size.width) &&
+                            offset.y in (box.top * size.height)..(box.bottom * size.height)
+                    }
+                    if (tappedSubject != null) {
+                        onSubjectTapped(tappedSubject)
+                        val box = tappedSubject.boundingBox
+                        onFocusTap(box.centerX * size.width, box.centerY * size.height)
+                    } else {
+                        onFocusTap(offset.x, offset.y)
+                    }
+                }
             },
     ) {
         AndroidView(
@@ -188,7 +220,11 @@ private fun CameraPreviewScreen(
 
         GridOverlay(gridType = uiState.gridType, modifier = Modifier.fillMaxSize())
         HorizonLineOverlay(horizonLineY = uiState.horizonLineY, modifier = Modifier.fillMaxSize())
-        BoundingBoxOverlay(subjects = uiState.subjects, modifier = Modifier.fillMaxSize())
+        BoundingBoxOverlay(
+            subjects = uiState.subjects,
+            selectedSubjectKey = uiState.selectedSubjectKey,
+            modifier = Modifier.fillMaxSize(),
+        )
 
         Column(
             modifier = Modifier
@@ -258,6 +294,13 @@ private fun CameraPreviewScreen(
                 )
             }
 
+            ShootingModeSelector(
+                selected = uiState.shootingMode,
+                onSelected = onShootingModeSelected,
+                onShowGlossary = { showGlossary = true },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 HorizonLevelOverlay(horizonState = uiState.horizonState)
             }
@@ -317,6 +360,10 @@ private fun CameraPreviewScreen(
                 )
             }
         }
+
+        if (showGlossary) {
+            PhotographyGlossaryDialog(onDismiss = { showGlossary = false })
+        }
     }
 }
 
@@ -357,6 +404,107 @@ private fun GridType.toVietnameseLabel(): String = when (this) {
     GridType.GOLDEN_TRIANGLE -> "Tam giác vàng"
     GridType.SQUARE -> "Ô vuông"
     GridType.DIAGONAL -> "Đường chéo"
+}
+
+/**
+ * A manual mode toggle (not an inline popup like [GridTypePicker]) since
+ * switching mode is a frequent, primary action while shooting - always
+ * visible, one row, scrolls horizontally on narrow screens instead of a
+ * fixed width (same overflow-safety lesson as the GridTypePicker fix).
+ */
+@Composable
+private fun ShootingModeSelector(
+    selected: ShootingMode,
+    onSelected: (ShootingMode) -> Unit,
+    onShowGlossary: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items(ShootingMode.entries) { mode ->
+            FilterChip(
+                selected = mode == selected,
+                onClick = { onSelected(mode) },
+                label = { Text(mode.toVietnameseLabel()) },
+            )
+        }
+        item {
+            CameraControlButton(
+                icon = Icons.Filled.HelpOutline,
+                contentDescription = "Giải thích quy tắc bố cục",
+                onClick = onShowGlossary,
+            )
+        }
+    }
+}
+
+private fun ShootingMode.toVietnameseLabel(): String = when (this) {
+    ShootingMode.AUTO -> "Tự động"
+    ShootingMode.PORTRAIT -> "Chân dung"
+    ShootingMode.ANIMAL -> "Thú vật"
+    ShootingMode.LANDSCAPE -> "Phong cảnh"
+}
+
+/**
+ * Static, offline glossary - not a generative AI call. Explanations are
+ * short, fixed text a beginner can read without leaving the camera screen.
+ */
+@Composable
+private fun PhotographyGlossaryDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Đã hiểu") }
+        },
+        title = { Text("Các khái niệm cơ bản") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlossaryEntry(
+                    term = "Quy tắc 1/3",
+                    explanation = "Chia khung hình thành 9 ô bằng 2 đường ngang và 2 đường dọc. " +
+                        "Đặt chủ thể chính (mắt, mặt người...) vào 1 trong 4 giao điểm thay vì " +
+                        "giữa khung sẽ giúp ảnh tự nhiên và cân đối hơn.",
+                )
+                GlossaryEntry(
+                    term = "Tỷ lệ vàng",
+                    explanation = "Một biến thể của quy tắc 1/3 nhưng các đường chia theo tỷ lệ " +
+                        "1:1.618 (tỷ lệ thường gặp trong tự nhiên) thay vì chia đều 3 phần " +
+                        "bằng nhau - tạo cảm giác hài hoà hơn một chút, thường dùng cho ảnh " +
+                        "phong cảnh/kiến trúc.",
+                )
+                GlossaryEntry(
+                    term = "Khoảng trống đầu (headroom)",
+                    explanation = "Khoảng cách từ đỉnh đầu chủ thể đến mép trên khung hình khi " +
+                        "chụp chân dung. Quá ít sẽ thấy chật chội, quá nhiều sẽ mất cân đối - " +
+                        "app tự tính khoảng trống lý tưởng khi phát hiện khuôn mặt.",
+                )
+                GlossaryEntry(
+                    term = "Đường chân trời",
+                    explanation = "Ranh giới trời và đất/biển trong ảnh phong cảnh. Nên giữ " +
+                        "thẳng tuyệt đối (không nghiêng) và đặt gần đường 1/3 trên hoặc dưới, " +
+                        "tránh đặt đúng giữa khung.",
+                )
+                GlossaryEntry(
+                    term = "Chế độ chụp (Chân dung/Thú vật/Phong cảnh)",
+                    explanation = "Chọn đúng chế độ giúp app ưu tiên đúng quy tắc: Chân dung/Thú " +
+                        "vật chú trọng lấy nét đúng chủ thể + hậu cảnh gọn; Phong cảnh chú " +
+                        "trọng đường chân trời. Chạm vào khung quanh người/vật trên màn hình " +
+                        "để chọn đúng chủ thể muốn lấy nét khi có nhiều người/vật trong khung.",
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun GlossaryEntry(term: String, explanation: String) {
+    Column {
+        Text(text = term, style = MaterialTheme.typography.titleSmall)
+        Text(text = explanation, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable
