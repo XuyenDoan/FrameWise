@@ -187,8 +187,13 @@ class AnalyzeCompositionUseCaseTest {
 
     @Test
     fun `portrait mode auto-picks the face over a larger non-face subject`() {
+        // centerX = centerY = 1/3 (on a thirds point) and top = 0.1 (within
+        // the 5%-15% ideal headroom band FACE subjects are checked against)
+        // so this box alone scores 100 - unlike the reused-PERSON-box
+        // pattern elsewhere in this file, a FACE box also has to satisfy
+        // the headroom check, not just thirds placement.
         val face = DetectedSubject(
-            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1f, right = 0.4833f, bottom = 0.5667f),
             label = SubjectLabel.FACE,
             confidence = 0.95f,
         )
