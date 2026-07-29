@@ -11,6 +11,7 @@ import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
+import com.framewise.domain.model.Resolution
 import com.framewise.domain.model.ShootingMode
 import com.framewise.domain.model.VisionResult
 import com.framewise.domain.model.trackingKey
@@ -114,6 +115,8 @@ class CameraPreviewViewModel @Inject constructor(
             horizonLineY = core.visionResult.horizonLineY,
             shootingMode = modeAndSelection.shootingMode,
             selectedSubjectKey = modeAndSelection.selectedSubjectKey,
+            availableResolutions = cameraState.availableResolutions,
+            selectedResolution = cameraState.selectedResolution,
         )
     }
         .stateIn(
@@ -163,6 +166,10 @@ class CameraPreviewViewModel @Inject constructor(
 
     fun onExposureChange(index: Int) {
         cameraRepository.setExposureIndex(index)
+    }
+
+    fun onResolutionSelected(resolution: Resolution) {
+        cameraRepository.setResolution(resolution)
     }
 
     fun onFocusTap(x: Float, y: Float) {

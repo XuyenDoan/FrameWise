@@ -4,6 +4,7 @@ import com.framewise.domain.model.CameraCaptureResult
 import com.framewise.domain.model.CameraState
 import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.LensFacing
+import com.framewise.domain.model.Resolution
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -23,6 +24,8 @@ interface CameraRepository {
     fun setFlashMode(flashMode: FlashMode)
     fun setZoomRatio(ratio: Float)
     fun setExposureIndex(index: Int)
+    /** Must be one of [CameraState.availableResolutions] - picking anything else is a no-op. */
+    fun setResolution(resolution: Resolution)
 
     suspend fun capturePhoto(): CameraCaptureResult
 }

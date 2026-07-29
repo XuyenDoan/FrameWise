@@ -2,9 +2,15 @@ package com.framewise.data.camera
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.ImageFormat
+import android.hardware.camera2.CameraCharacteristics
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Size
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
@@ -13,6 +19,8 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.core.ViewPort
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
@@ -23,6 +31,7 @@ import com.framewise.domain.model.CameraState
 import com.framewise.domain.model.CapturedPhoto
 import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.LensFacing
+import com.framewise.domain.model.Resolution
 import com.framewise.domain.repository.CameraRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.Executors
@@ -67,9 +76,6 @@ class CameraXController @Inject constructor(
     private var previewView: PreviewView? = null
 
     private val preview = Preview.Builder().build()
-    private val imageCapture = ImageCapture.Builder()
-        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-        .build()
 
     // Deliberately lower resolution than the capture pipeline: ML inference
     // only needs enough detail to find subjects/lighting, not full quality,
@@ -77,11 +83,19 @@ class CameraXController @Inject constructor(
     // preview's frame rate.
     private val imageAnalysis = ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-        .setTargetResolution(android.util.Size(640, 480))
+        .setTargetResolution(Size(640, 480))
         .build()
 
     private var lensFacing = LensFacing.BACK
     private var flashMode = FlashMode.OFF
+
+    // null = no manual pick yet, so buildImageCapture() below requests the
+    // sensor's highest available still-capture resolution by default (see
+    // its KDoc) - this directly answers the "ảnh nhẹ, mất chi tiết" report:
+    // ImageCapture previously had no resolution selector at all, so CameraX
+    // was free to pick a smaller-than-max size favoring capture latency.
+    private var pinnedResolution: Resolution? = null
+    private var imageCapture = buildImageCapture()
 
     override fun bind(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
         this.lifecycleOwner = lifecycleOwner
@@ -123,6 +137,12 @@ class CameraXController @Inject constructor(
 
     override fun setLensFacing(lensFacing: LensFacing) {
         this.lensFacing = lensFacing
+        // The front/back cameras can support different resolution sets, so
+        // a resolution manually pinned on one lens isn't guaranteed to
+        // still make sense on the other - reset to "highest available"
+        // rather than risk silently keeping a mismatched pin.
+        pinnedResolution = null
+        imageCapture = buildImageCapture()
         val provider = cameraProvider ?: return
         val owner = lifecycleOwner ?: return
         controllerScope.launch { rebindUseCases(provider, owner) }
@@ -130,13 +150,28 @@ class CameraXController @Inject constructor(
 
     override fun setFlashMode(flashMode: FlashMode) {
         this.flashMode = flashMode
-        imageCapture.flashMode = when (flashMode) {
-            FlashMode.ON -> ImageCapture.FLASH_MODE_ON
-            FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
-            FlashMode.OFF, FlashMode.TORCH -> ImageCapture.FLASH_MODE_OFF
-        }
+        imageCapture.flashMode = mapFlashMode(flashMode)
         camera?.cameraControl?.enableTorch(flashMode == FlashMode.TORCH)
         _cameraState.value = _cameraState.value.copy(flashMode = flashMode)
+    }
+
+    /**
+     * Rebuilds [imageCapture] pinned to [resolution] and rebinds - CameraX's
+     * [ResolutionSelector] is fixed at [ImageCapture.Builder] time, it can't
+     * be changed on a live use case, so switching resolution means a fresh
+     * [ImageCapture] instance and a full rebind (same pattern
+     * [setLensFacing] already uses). A [resolution] not present in the
+     * current [CameraState.availableResolutions] is silently ignored rather
+     * than guessed at - the UI is only ever supposed to offer values from
+     * that list.
+     */
+    override fun setResolution(resolution: Resolution) {
+        if (resolution !in _cameraState.value.availableResolutions) return
+        pinnedResolution = resolution
+        imageCapture = buildImageCapture()
+        val provider = cameraProvider ?: return
+        val owner = lifecycleOwner ?: return
+        controllerScope.launch { rebindUseCases(provider, owner) }
     }
 
     override fun setZoomRatio(ratio: Float) {
@@ -253,6 +288,7 @@ class CameraXController @Inject constructor(
         val cameraInfo = boundCamera.cameraInfo
         val zoomState = cameraInfo.zoomState.value
         val exposureState = cameraInfo.exposureState
+        val availableResolutions = enumerateJpegResolutions(cameraInfo)
 
         _cameraState.value = CameraState(
             lensFacing = lensFacing,
@@ -264,7 +300,58 @@ class CameraXController @Inject constructor(
             exposureIndex = exposureState.exposureCompensationIndex,
             exposureRange = exposureState.exposureCompensationRange.lower..exposureState.exposureCompensationRange.upper,
             isReady = true,
+            availableResolutions = availableResolutions,
+            // pinnedResolution is what we actually asked ImageCapture for;
+            // with no pin, buildImageCapture() requested
+            // ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY, so the largest
+            // entry in the list we just enumerated IS what's in effect -
+            // more robust to report here than reading back
+            // imageCapture.resolutionInfo, which can lag briefly right
+            // after a bind.
+            selectedResolution = pinnedResolution ?: availableResolutions.maxByOrNull {
+                it.width.toLong() * it.height
+            },
         )
+    }
+
+    private fun buildImageCapture(): ImageCapture {
+        val strategy = pinnedResolution?.let { resolution ->
+            ResolutionStrategy(
+                Size(resolution.width, resolution.height),
+                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+            )
+        } ?: ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY
+
+        return ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(strategy).build())
+            .build()
+            .also { it.flashMode = mapFlashMode(flashMode) }
+    }
+
+    private fun mapFlashMode(flashMode: FlashMode): Int = when (flashMode) {
+        FlashMode.ON -> ImageCapture.FLASH_MODE_ON
+        FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+        FlashMode.OFF, FlashMode.TORCH -> ImageCapture.FLASH_MODE_OFF
+    }
+
+    /**
+     * Reads the sizes the camera's hardware actually reports for JPEG still
+     * capture (via Camera2 interop's [CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP])
+     * rather than a hardcoded list - resolution support varies a lot across
+     * real devices, so this can only be known at runtime per-device.
+     */
+    @OptIn(ExperimentalCamera2Interop::class)
+    private fun enumerateJpegResolutions(cameraInfo: CameraInfo): List<Resolution> {
+        val characteristics = Camera2CameraInfo.from(cameraInfo)
+            .getCameraCharacteristic(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            ?: return emptyList()
+        val sizes = characteristics.getOutputSizes(ImageFormat.JPEG) ?: return emptyList()
+
+        return sizes
+            .map { Resolution(it.width, it.height) }
+            .distinct()
+            .sortedByDescending { it.width.toLong() * it.height }
     }
 
     private suspend fun awaitCameraProvider(): ProcessCameraProvider =

@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +67,7 @@ import com.framewise.domain.model.DetectedSubject
 import com.framewise.domain.model.FlashMode
 import com.framewise.domain.model.GridType
 import com.framewise.domain.model.GuidanceType
+import com.framewise.domain.model.Resolution
 import com.framewise.domain.model.SceneType
 import com.framewise.domain.model.ShootingMode
 import com.framewise.feature.overlay.ArGuidanceArrow
@@ -124,6 +127,7 @@ fun CameraPreviewRoute(
                 onToggleVoice = viewModel::onToggleVoice,
                 onShootingModeSelected = viewModel::onShootingModeSelected,
                 onSubjectTapped = viewModel::onSubjectTapped,
+                onResolutionSelected = viewModel::onResolutionSelected,
                 onCapture = viewModel::onCapture,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -160,6 +164,7 @@ private fun CameraPreviewScreen(
     onToggleVoice: () -> Unit,
     onShootingModeSelected: (ShootingMode) -> Unit,
     onSubjectTapped: (DetectedSubject) -> Unit,
+    onResolutionSelected: (Resolution) -> Unit,
     onCapture: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -297,6 +302,9 @@ private fun CameraPreviewScreen(
                 selected = uiState.shootingMode,
                 onSelected = onShootingModeSelected,
                 onShowGlossary = { showGlossary = true },
+                availableResolutions = uiState.availableResolutions,
+                selectedResolution = uiState.selectedResolution,
+                onResolutionSelected = onResolutionSelected,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -425,6 +433,9 @@ private fun ShootingModeSelector(
     selected: ShootingMode,
     onSelected: (ShootingMode) -> Unit,
     onShowGlossary: () -> Unit,
+    availableResolutions: List<Resolution>,
+    selectedResolution: Resolution?,
+    onResolutionSelected: (Resolution) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -438,6 +449,35 @@ private fun ShootingModeSelector(
                 onClick = { onSelected(mode) },
                 label = { Text(mode.toVietnameseLabel()) },
             )
+        }
+        if (availableResolutions.isNotEmpty()) {
+            item {
+                var showResolutionPicker by remember { mutableStateOf(false) }
+                val density = LocalDensity.current
+                Box {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showResolutionPicker = !showResolutionPicker },
+                        label = { Text(selectedResolution?.toVietnameseLabel() ?: "Độ phân giải") },
+                    )
+                    if (showResolutionPicker) {
+                        Popup(
+                            alignment = Alignment.TopStart,
+                            offset = IntOffset(0, with(density) { 48.dp.roundToPx() }),
+                            onDismissRequest = { showResolutionPicker = false },
+                        ) {
+                            ResolutionPicker(
+                                resolutions = availableResolutions,
+                                selected = selectedResolution,
+                                onSelected = { resolution ->
+                                    onResolutionSelected(resolution)
+                                    showResolutionPicker = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
         item {
             CameraControlButton(
@@ -455,6 +495,43 @@ private fun ShootingMode.toVietnameseLabel(): String = when (this) {
     ShootingMode.ANIMAL -> "Thú cưng"
     ShootingMode.LANDSCAPE -> "Phong cảnh"
 }
+
+@Composable
+private fun ResolutionPicker(
+    resolutions: List<Resolution>,
+    selected: Resolution?,
+    onSelected: (Resolution) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Same widthIn(max) + internal-scroll pattern as GridTypePicker: caps
+    // width on small screens, still reachable via scroll if the device
+    // reports many resolution options.
+    Surface(
+        modifier = modifier.widthIn(max = 220.dp),
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .heightIn(max = 280.dp)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            items(resolutions) { resolution ->
+                FilterChip(
+                    selected = resolution == selected,
+                    onClick = { onSelected(resolution) },
+                    label = { Text(resolution.toVietnameseLabel()) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+private fun Resolution.toVietnameseLabel(): String =
+    "${width}×${height} (${"%.0f".format(megapixels)}MP)"
 
 /**
  * Static, offline glossary - not a generative AI call. Explanations are
@@ -498,9 +575,15 @@ private fun PhotographyGlossaryDialog(onDismiss: () -> Unit) {
                 GlossaryEntry(
                     term = "Chế độ chụp (Chân dung/Thú cưng/Phong cảnh)",
                     explanation = "Chọn đúng chế độ giúp app ưu tiên đúng quy tắc: Chân dung/Thú " +
-                        "vật chú trọng lấy nét đúng chủ thể + hậu cảnh gọn; Phong cảnh chú " +
+                        "cưng chú trọng lấy nét đúng chủ thể + hậu cảnh gọn; Phong cảnh chú " +
                         "trọng đường chân trời. Chạm vào khung quanh người/vật trên màn hình " +
                         "để chọn đúng chủ thể muốn lấy nét khi có nhiều người/vật trong khung.",
+                )
+                GlossaryEntry(
+                    term = "Độ phân giải (MP)",
+                    explanation = "Số điểm ảnh (megapixel) ảnh chụp ra - phân giải càng cao, ảnh " +
+                        "càng nhiều chi tiết và dung lượng file càng lớn. App mặc định chọn độ " +
+                        "phân giải cao nhất máy hỗ trợ; chạm vào ô độ phân giải để xem/đổi.",
                 )
             }
         },

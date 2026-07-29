@@ -7,6 +7,7 @@ import com.framewise.domain.model.GuidanceType
 import com.framewise.domain.model.HorizonState
 import com.framewise.domain.model.LensFacing
 import com.framewise.domain.model.PoseSuggestion
+import com.framewise.domain.model.Resolution
 import com.framewise.domain.model.SceneType
 import com.framewise.domain.model.ShootingMode
 
@@ -39,6 +40,8 @@ data class CameraPreviewUiState(
     val horizonLineY: Float? = null,
     val shootingMode: ShootingMode = ShootingMode.AUTO,
     val selectedSubjectKey: String? = null,
+    val availableResolutions: List<Resolution> = emptyList(),
+    val selectedResolution: Resolution? = null,
 )
 
 sealed interface CaptureEvent {

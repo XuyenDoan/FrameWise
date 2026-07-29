@@ -15,4 +15,8 @@ data class CameraState(
     val exposureIndex: Int = 0,
     val exposureRange: IntRange = 0..0,
     val isReady: Boolean = false,
+    /** All JPEG still-capture resolutions the current camera (front/back) reports supporting, largest first. */
+    val availableResolutions: List<Resolution> = emptyList(),
+    /** The resolution actually in effect - defaults to the highest in [availableResolutions] unless the user picked one. */
+    val selectedResolution: Resolution? = null,
 )

@@ -11,6 +11,19 @@
   `:domain:test` mỗi khi push lên branch này, upload artifact
   `framewise-debug-apk` (xem tab Actions trên GitHub để tải).
 
+## Chọn độ phân giải ảnh chụp (2026-07-29)
+
+Bạn báo ảnh chụp ra "nhẹ, không giữ chi tiết" — **lỗi thật**: `ImageCapture`
+trước đó không hề chỉ định độ phân giải, CameraX tự chọn theo tiêu chí nội
+bộ (kết hợp `CAPTURE_MODE_MINIMIZE_LATENCY` ưu tiên tốc độ hơn chất lượng).
+Đã sửa: mặc định chụp ở **độ phân giải cao nhất máy hỗ trợ**
+(`ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY`), đổi sang
+`CAPTURE_MODE_MAXIMIZE_QUALITY`, và thêm **chip chọn độ phân giải thủ công**
+— danh sách đọc thật từ phần cứng camera (Camera2
+`SCALER_STREAM_CONFIGURATION_MAP`), không phải danh sách cứng viết sẵn.
+Chi tiết đầy đủ + giới hạn kỹ thuật (chưa test trên thiết bị thật): xem
+`docs/RESOLUTION_PICKER.md`.
+
 ## Chế độ chụp + chọn chủ thể + trợ giúp người mới (2026-07-29)
 
 Bạn phản hồi app chưa hỗ trợ sâu (không giải thích quy tắc, không có chế
