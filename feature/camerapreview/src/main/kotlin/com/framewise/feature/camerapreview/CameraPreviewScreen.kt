@@ -306,8 +306,17 @@ private fun CameraPreviewScreen(
 
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (uiState.scene != SceneType.UNKNOWN) {
-                        SceneBadge(scene = uiState.scene)
+                    // The auto-detected scene badge is only shown in AUTO
+                    // mode: once the user has manually picked a shooting
+                    // mode, showing ML Kit's own (possibly different, even
+                    // momentarily wrong) scene guess next to it would just
+                    // contradict the mode they chose - the tip below already
+                    // reflects the chosen mode instead of the auto scene in
+                    // that case (see GetPhotographyTipsUseCase).
+                    if (uiState.shootingMode != ShootingMode.AUTO || uiState.scene != SceneType.UNKNOWN) {
+                        if (uiState.shootingMode == ShootingMode.AUTO) {
+                            SceneBadge(scene = uiState.scene)
+                        }
                         if (uiState.photographyTip.isNotBlank()) {
                             PhotographyTipCaption(tip = uiState.photographyTip)
                         }
@@ -443,7 +452,7 @@ private fun ShootingModeSelector(
 private fun ShootingMode.toVietnameseLabel(): String = when (this) {
     ShootingMode.AUTO -> "Tự động"
     ShootingMode.PORTRAIT -> "Chân dung"
-    ShootingMode.ANIMAL -> "Thú vật"
+    ShootingMode.ANIMAL -> "Thú cưng"
     ShootingMode.LANDSCAPE -> "Phong cảnh"
 }
 
@@ -487,7 +496,7 @@ private fun PhotographyGlossaryDialog(onDismiss: () -> Unit) {
                         "tránh đặt đúng giữa khung.",
                 )
                 GlossaryEntry(
-                    term = "Chế độ chụp (Chân dung/Thú vật/Phong cảnh)",
+                    term = "Chế độ chụp (Chân dung/Thú cưng/Phong cảnh)",
                     explanation = "Chọn đúng chế độ giúp app ưu tiên đúng quy tắc: Chân dung/Thú " +
                         "vật chú trọng lấy nét đúng chủ thể + hậu cảnh gọn; Phong cảnh chú " +
                         "trọng đường chân trời. Chạm vào khung quanh người/vật trên màn hình " +

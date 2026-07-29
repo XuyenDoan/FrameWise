@@ -108,7 +108,7 @@ class CameraPreviewViewModel @Inject constructor(
             guidanceMessages = guidance.messages,
             compositionScore = guidance.score,
             scene = core.visionResult.scene,
-            photographyTip = getPhotographyTips(core.visionResult.scene),
+            photographyTip = getPhotographyTips(core.visionResult.scene, modeAndSelection.shootingMode),
             isVoiceEnabled = voiceEnabled,
             poseSuggestions = poseSuggestionList,
             horizonLineY = core.visionResult.horizonLineY,

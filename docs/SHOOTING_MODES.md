@@ -1,4 +1,4 @@
-# Chế độ chụp (Chân dung/Thú vật/Phong cảnh) + chọn chủ thể + trợ giúp người mới
+# Chế độ chụp (Chân dung/Thú cưng/Phong cảnh) + chọn chủ thể + trợ giúp người mới
 
 ## Bối cảnh
 
@@ -14,9 +14,30 @@ phương án cụ thể qua các câu hỏi làm rõ:
 - Người mới: **tooltip ngay trên màn hình chụp** (không làm onboarding
   nhiều trang riêng).
 
+## Lỗi đã sửa: gợi ý tự động mâu thuẫn với chế độ đã chọn (2026-07-29)
+
+Bạn báo: chọn chế độ **Chân dung** nhưng app lại hiện gợi ý "Hạ máy ngang
+tầm mắt thú cưng..." — **đây là lỗi thật**, không phải cố ý. Nguyên nhân:
+badge cảnh (`SceneBadge`) và caption gợi ý (`PhotographyTipCaption`) trước
+đó lấy hoàn toàn từ `SceneType` **tự nhận diện qua ML Kit Image Labeling**
+trên khung hình thực tế, **độc lập hoàn toàn** với `ShootingMode` bạn tự
+chọn — nếu ML Kit nhận nhầm/thấy khung hình giống "Thú cưng" (kể cả khi bạn
+đang chụp chân dung), gợi ý vẫn hiện theo cảnh tự nhận diện, đè lên/mâu
+thuẫn với chế độ bạn đã chọn.
+
+**Đã sửa:** khi bạn **đã chọn chế độ thủ công** (khác Tự động),
+`GetPhotographyTipsUseCase` giờ **ưu tiên tuyệt đối** gợi ý theo chế độ đã
+chọn, bỏ qua cảnh tự nhận diện; đồng thời badge cảnh tự động (`SceneBadge`)
+**chỉ hiện khi đang ở chế độ Tự động** — tránh nhãn tự nhận diện hiện song
+song và mâu thuẫn với chế độ đã chọn.
+
+Cũng đổi tên nút "Thú vật" → **"Thú cưng"** theo yêu cầu (đồng bộ với nhãn
+"Thú cưng" đã dùng sẵn ở badge cảnh tự nhận diện `SceneType.PET` — trước đó
+2 chỗ dùng 2 tên khác nhau, cũng là một phần gây rối).
+
 ## Chế độ chụp (`ShootingMode`)
 
-4 lựa chọn: **Tự động / Chân dung / Thú vật / Phong cảnh** — thanh chip
+4 lựa chọn: **Tự động / Chân dung / Thú cưng / Phong cảnh** — thanh chip
 cuộn ngang, luôn hiện ngay dưới hàng nút điều khiển trên cùng. Đây là lựa
 chọn **thủ công**, tách biệt với `SceneType` (nhãn cảnh app tự nhận diện
 qua ML Kit Image Labeling, chỉ hiển thị làm badge/gợi ý, không ảnh hưởng
@@ -28,14 +49,14 @@ người dùng chưa tự chạm chọn, và quy tắc nào được áp dụng:
 | Chế độ | Ưu tiên chọn chủ thể tự động | Quy tắc bị tắt |
 |---|---|---|
 | Chân dung | Ưu tiên khuôn mặt (FACE) nếu có, kể cả khi có vật thể lớn hơn trong khung | — |
-| Thú vật | Ưu tiên chủ thể **không phải khuôn mặt người** (ML Kit không phân biệt được loài — xem giới hạn bên dưới) | — |
+| Thú cưng | Ưu tiên chủ thể **không phải khuôn mặt người** (ML Kit không phân biệt được loài — xem giới hạn bên dưới) | — |
 | Phong cảnh | Không ưu tiên gì (vẫn "vật lớn nhất thắng" như trước) | Tắt gợi ý "hậu cảnh rối" (`BUSY_BACKGROUND`) — phong cảnh thường muốn giữ nguyên toàn cảnh, không cần tách nền |
 | Tự động | Giữ nguyên hành vi cũ (vật lớn nhất thắng) | — |
 
 **Quan trọng — giới hạn thật, không phải thiếu sót:** ML Kit (thư viện
 nhận diện đang dùng, unbundled Object Detection) **không phân biệt được
 loài vật** (chó/mèo/chim...) — chỉ trả về nhãn chung "Vật thể". Nên "chế độ
-Thú vật" hoạt động bằng cách ưu tiên chọn "vật thể không phải khuôn mặt
+Thú cưng" hoạt động bằng cách ưu tiên chọn "vật thể không phải khuôn mặt
 người" làm chủ thể chính, chứ **không** thể nói "đây là con mèo" hay tối ưu
 riêng theo loài. Xem KDoc `SubjectLabel` trong domain để biết chi tiết.
 
@@ -86,7 +107,7 @@ lẻ).
 ## Việc CHƯA làm / cần test trên máy thật
 
 - Tracking ID có ổn định thực tế không (xem giới hạn ở trên).
-- Chế độ Thú vật với vật thể thật (chó/mèo/chim) — ML Kit có nhận diện
+- Chế độ Thú cưng với vật thể thật (chó/mèo/chim) — ML Kit có nhận diện
   được bounding box chính xác không (chỉ biết đó KHÔNG phải khuôn mặt
   người, còn độ chính xác khung bao vật thể phụ thuộc hoàn toàn vào ML Kit
   Object Detection, chưa kiểm chứng với ảnh động vật thật).

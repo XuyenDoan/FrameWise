@@ -18,7 +18,7 @@ Bạn phản hồi app chưa hỗ trợ sâu (không giải thích quy tắc, kh
 làm xong, xem chi tiết đầy đủ (thiết kế, giới hạn kỹ thuật, cách test) ở
 **`docs/SHOOTING_MODES.md`**. Tóm tắt nhanh:
 
-- Thanh chọn chế độ **Tự động/Chân dung/Thú vật/Phong cảnh** (thủ công,
+- Thanh chọn chế độ **Tự động/Chân dung/Thú cưng/Phong cảnh** (thủ công,
   người dùng tự chọn) — đổi cách app ưu tiên chọn chủ thể + tắt/bật một số
   quy tắc gợi ý theo chế độ.
 - **Chạm vào khung nhận diện** (khuôn mặt/vật thể) trên preview để chọn chủ
@@ -29,11 +29,19 @@ làm xong, xem chi tiết đầy đủ (thiết kế, giới hạn kỹ thuật,
   đường chân trời, cách dùng chế độ/chọn chủ thể — nội dung viết sẵn, không
   gọi AI ngoài.
 - **Giới hạn cần biết:** ML Kit không phân biệt được loài vật, nên "chế độ
-  Thú vật" chỉ ưu tiên "vật thể không phải khuôn mặt người", không nhận
+  Thú cưng" chỉ ưu tiên "vật thể không phải khuôn mặt người", không nhận
   diện đúng là con gì.
 
 **Chưa test được trên thiết bị thật** — đặc biệt là độ ổn định của tracking
 ID khi chọn chủ thể (subject có "theo" đúng khi di chuyển máy nhẹ không).
+
+**Lỗi bạn báo tiếp theo, đã sửa:** chọn chế độ Chân dung nhưng app hiện gợi
+ý "thú cưng" — do badge/tip trước đó lấy từ `SceneType` tự nhận diện (ML
+Kit), độc lập hoàn toàn với `ShootingMode` tự chọn. Đã sửa: chế độ thủ công
+giờ ghi đè tuyệt đối gợi ý tự động, badge cảnh tự động chỉ hiện ở chế độ Tự
+động. Cũng đổi tên nút "Thú vật" → "Thú cưng" theo yêu cầu. Chi tiết đầy đủ
+ở `docs/SHOOTING_MODES.md` mục "Lỗi đã sửa: gợi ý tự động mâu thuẫn với chế
+độ đã chọn".
 
 ## Đã làm xong (Phase 1 → 10 + Pose Assistant)
 
