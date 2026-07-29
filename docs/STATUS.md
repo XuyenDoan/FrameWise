@@ -45,13 +45,13 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-Commit cuối cùng đã push (`fix: missing getValue import...`) đang chờ CI
-xác nhận tại thời điểm ghi chú này — **chưa có kết quả cuối cùng**.
+**Cập nhật: CI đã XANH.** Commit `ee4fcd7` (`docs: add STATUS.md`) build
+thành công — cả `:domain:test` lẫn `:app:assembleDebug`. Artifact
+`framewise-debug-apk` (~81MB, tăng do thêm MediaPipe) đã sẵn sàng tải tại
+tab Actions của repo, run tương ứng commit `ee4fcd7`.
 
-**Việc cần làm đầu tiên khi quay lại:** kiểm tra kết quả build của commit
-mới nhất trên branch (`git log -1`) tại tab Actions của repo trên GitHub
-— nếu vẫn còn lỗi, sửa tiếp theo đúng quy trình đã dùng (đọc log lỗi thật
-từ Actions, sửa, push, lặp lại). Nếu xanh, tải APK ở artifact để test.
+Nếu bạn quay lại và branch có thêm push mới, luôn kiểm tra lại trạng thái
+build mới nhất trước khi giả định vẫn xanh.
 
 ## Việc CHƯA làm / cần người dùng xác nhận
 
