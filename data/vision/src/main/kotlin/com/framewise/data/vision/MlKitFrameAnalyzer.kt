@@ -33,6 +33,8 @@ import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
  * [SubjectLabel.OBJECT] — ML Kit's unbundled classifier can't tell species
  * apart. Scene classification (via ML Kit Image Labeling + [SceneClassifier])
  * runs separately, throttled to every [SCENE_ANALYSIS_INTERVAL]th frame.
+ * [HorizonLineDetector] only runs when no subject was found (see its KDoc
+ * for a known coordinate-space limitation).
  */
 internal class MlKitFrameAnalyzer(
     private val poseFrameProcessor: PoseFrameProcessor,
@@ -93,6 +95,10 @@ internal class MlKitFrameAnalyzer(
                             val subjects = buildSubjects(faces, objects, analysisWidth, analysisHeight)
                             val primary = subjects.maxByOrNull { it.boundingBox.area }
                             val lighting = LuminanceEvaluator.evaluate(imageProxy, primary?.boundingBox)
+                            // Only worth the scan when there's no foreground
+                            // subject - AnalyzeCompositionUseCase ignores this
+                            // value entirely whenever a primary subject exists.
+                            val horizonLineY = if (subjects.isEmpty()) HorizonLineDetector.detect(imageProxy) else null
 
                             if (shouldDetectPose) {
                                 // MediaPipe requires strictly increasing timestamps for VIDEO mode.
@@ -102,7 +108,14 @@ internal class MlKitFrameAnalyzer(
                                 onPoseResult(poseFrameProcessor.detect(mediaImage, rotationDegrees, timestampMs))
                             }
 
-                            onResult(VisionResult(subjects = subjects, lighting = lighting, scene = lastScene))
+                            onResult(
+                                VisionResult(
+                                    subjects = subjects,
+                                    lighting = lighting,
+                                    scene = lastScene,
+                                    horizonLineY = horizonLineY,
+                                ),
+                            )
                             imageProxy.close()
                         }
 

@@ -26,6 +26,7 @@
 | 9 | AR Guidance arrows (Canvas) + Voice Assistant (TextToSpeech, debounce) | `feature/overlay/ArGuidanceArrow.kt`, `feature/camerapreview/VoiceGuidanceSpeaker.kt` |
 | 10 | Capture History ("before/after" theo điểm số, không phải AI sinh ảnh) | `feature/camerapreview/CaptureHistoryPanel.kt` |
 | Pose Assistant | MediaPipe Pose Landmarker — gợi ý "thả lỏng vai"/"ngẩng cằm" | `docs/POSE_ASSISTANT.md` |
+| Horizon line detection | Ước lượng vị trí đường chân trời trong ảnh (heuristic gradient độ sáng), đưa về gần 1/3 khi không có chủ thể chính | `data/vision/HorizonLineDetector.kt` (có ghi rõ giới hạn về rotation) |
 
 Toàn bộ tài liệu chi tiết từng phase nằm trong `docs/`:
 - `PHASE_1_ARCHITECTURE.md`, `PHASE_2_CAMERAX_SETUP.md`, `PHASE_8_TO_10.md`,
@@ -45,13 +46,12 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật: CI đã XANH.** Commit `ee4fcd7` (`docs: add STATUS.md`) build
-thành công — cả `:domain:test` lẫn `:app:assembleDebug`. Artifact
-`framewise-debug-apk` (~81MB, tăng do thêm MediaPipe) đã sẵn sàng tải tại
-tab Actions của repo, run tương ứng commit `ee4fcd7`.
+**Cập nhật (commit `ee4fcd7`): CI đã XANH.** Vừa push thêm Horizon line
+detection (commit sau `ee4fcd7`) — **chưa có kết quả CI cho commit này**,
+kiểm tra lại trước khi giả định vẫn xanh.
 
-Nếu bạn quay lại và branch có thêm push mới, luôn kiểm tra lại trạng thái
-build mới nhất trước khi giả định vẫn xanh.
+Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
+trước khi giả định branch đang ở trạng thái build được.
 
 ## Việc CHƯA làm / cần người dùng xác nhận
 
@@ -61,9 +61,12 @@ build mới nhất trước khi giả định vẫn xanh.
 - **Pose Assistant cần mạng ở lần chạy đầu** để tải model MediaPipe
   (~5-9MB) — chưa kiểm chứng được URL tải model có đúng/còn hoạt động hay
   không (xem `docs/POSE_ASSISTANT.md`).
-- **Horizon line detection trong ảnh** (khác sensor góc nghiêng): chưa làm
-  — cần thị giác máy tính dò đường chân trời thật trong khung hình để đặt
-  đúng vị trí 1/3 cho ảnh phong cảnh.
+- **Horizon line detection trong ảnh**: đã làm (heuristic, không phải model
+  thật) — nhưng có **giới hạn quan trọng chưa kiểm chứng được**: detector
+  quét theo trục chưa chuẩn hoá xoay ảnh (rotation) như ML Kit đã làm ở chỗ
+  khác trong cùng file `MlKitFrameAnalyzer.kt`, nên trên máy cầm dọc (phổ
+  biến nhất khi chụp) có thể quét sai trục. Cần xác nhận trên thiết bị
+  thật rồi sửa nếu sai — xem ghi chú trong `data/vision/HorizonLineDetector.kt`.
 - **Checklist bố cục** (`docs/COMPOSITION_CHECKLIST.md`) vẫn còn nhiều tiêu
   chí "nghệ thuật" chưa làm được: tách nền/tiền cảnh (segmentation),
   leading lines, cân bằng thị giác tổng thể — đây đều là các mô hình thị

@@ -35,6 +35,7 @@ data class CameraPreviewUiState(
     val photographyTip: String = "",
     val isVoiceEnabled: Boolean = false,
     val poseSuggestions: List<PoseSuggestion> = listOf(PoseSuggestion.NONE),
+    val horizonLineY: Float? = null,
 )
 
 sealed interface CaptureEvent {

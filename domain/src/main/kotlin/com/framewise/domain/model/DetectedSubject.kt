@@ -39,4 +39,14 @@ data class VisionResult(
     val subjects: List<DetectedSubject> = emptyList(),
     val lighting: LightingState = LightingState.GOOD,
     val scene: SceneType = SceneType.UNKNOWN,
+    /**
+     * Vertical position (0f..1f, top to bottom) of the detected horizon
+     * line in the frame — distinct from [HorizonState][com.framewise.domain.model.HorizonState]'s
+     * sensor-based roll angle, this is a computer-vision estimate of
+     * *where in the image* the horizon sits, needed to check placement
+     * against the rule of thirds. Null when no horizon was confidently
+     * detected (indoor scenes, no clear sky/ground split, etc.) — callers
+     * must not guess a value when this is null.
+     */
+    val horizonLineY: Float? = null,
 )

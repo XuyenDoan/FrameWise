@@ -104,6 +104,43 @@ class AnalyzeCompositionUseCaseTest {
     }
 
     @Test
+    fun `horizon line dead center with no subject suggests lowering camera`() {
+        val result = useCase(
+            vision = VisionResult(horizonLineY = 0.5f),
+            horizon = HorizonState.fromAngle(0f),
+        )
+
+        assertThat(result.messages).contains(GuidanceType.LOWER_CAMERA)
+    }
+
+    @Test
+    fun `horizon line already near a third with no subject scores 100`() {
+        val result = useCase(
+            vision = VisionResult(horizonLineY = 1f / 3f),
+            horizon = HorizonState.fromAngle(0f),
+        )
+
+        assertThat(result.score).isEqualTo(100)
+        assertThat(result.messages).containsExactly(GuidanceType.GOOD)
+    }
+
+    @Test
+    fun `horizon line placement is ignored when a primary subject is present`() {
+        val subject = DetectedSubject(
+            boundingBox = NormalizedRect(left = 0.1833f, top = 0.1833f, right = 0.4833f, bottom = 0.4833f),
+            label = SubjectLabel.PERSON,
+            confidence = 0.9f,
+        )
+        val result = useCase(
+            vision = VisionResult(subjects = listOf(subject), horizonLineY = 0.5f),
+            horizon = HorizonState.fromAngle(0f),
+        )
+
+        assertThat(result.score).isEqualTo(100)
+        assertThat(result.messages).containsExactly(GuidanceType.GOOD)
+    }
+
+    @Test
     fun `bad lighting suggests improving lighting`() {
         val result = useCase(
             vision = VisionResult(lighting = LightingState.BACKLIT),

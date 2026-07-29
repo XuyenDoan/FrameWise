@@ -34,7 +34,7 @@
 | # | Tiêu chí | FrameWise hỗ trợ? | Ghi chú |
 |---|---|---|---|
 | 1 | Đường chân trời phải thẳng tuyệt đối | ✅ Có | Horizon sensor + overlay + guidance, đây là tiêu chí hay bị loại nhất trong các giải nên được ưu tiên làm sớm (Phase 5) |
-| 2 | Đặt đường chân trời ở 1/3 trên hoặc dưới khung (không đặt giữa trừ khi phản chiếu đối xứng chủ đích) | ❌ Chưa | Cần horizon **line detection trong ảnh** (thị giác máy tính tìm đường chân trời thật trong khung hình), khác với horizon **sensor** (chỉ đo độ nghiêng, không biết đường chân trời nằm ở đâu trong khung theo chiều dọc) — đây là tính năng riêng chưa làm (ghi trong Phase 1 doc mục 10 là "enhancement" ở phase sau) |
+| 2 | Đặt đường chân trời ở 1/3 trên hoặc dưới khung (không đặt giữa trừ khi phản chiếu đối xứng chủ đích) | ⚠️ Một phần | `HorizonLineDetector` (heuristic gradient độ sáng theo hàng ảnh, không phải model line-detection thật) ước lượng vị trí đường chân trời khi không có chủ thể chính, `AnalyzeCompositionUseCase` sinh guidance đưa nó về gần 1/3. **Giới hạn quan trọng:** detector quét theo trục chưa chuẩn hoá xoay ảnh (rotation) như ML Kit — xem ghi chú trong `HorizonLineDetector.kt` — độ chính xác thực tế trên máy cầm dọc (phổ biến nhất) chưa được kiểm chứng |
 | 3 | Có tiền cảnh (foreground interest) tạo chiều sâu | ❌ Chưa | Cần depth estimation hoặc phân vùng ngữ nghĩa (semantic segmentation foreground/background) — chưa làm |
 | 4 | Có leading lines dẫn mắt vào khung | ❌ Chưa | Cần edge/line detection (OpenCV hoặc mô hình riêng) — ngoài phạm vi hiện tại |
 | 5 | Bầu trời không cháy trắng mất chi tiết mây | ✅ Có (một phần) | `LuminanceEvaluator` phát hiện OVEREXPOSED tổng thể; **chưa** khoanh vùng riêng phần bầu trời để cảnh báo cục bộ |
@@ -43,7 +43,7 @@
 | 8 | Không có vật thể gây xao nhãng bị cắt cụt ở viền khung | ❌ Chưa | Cần phát hiện vật thể phụ ở rìa khung và cảnh báo riêng — chưa làm |
 | 9 | Cân bằng trọng lượng thị giác giữa các phần khung hình | ❌ Chưa | Đây là tiêu chí "nghệ thuật" khó lượng hoá, cần mô hình composition-score phức tạp hơn nhiều (ngoài phạm vi rule-based hiện tại) |
 
-**Điểm phong cảnh: 3/9 tiêu chí có hỗ trợ đầy đủ, 2/9 hỗ trợ một phần, 4/9 chưa làm.**
+**Điểm phong cảnh: 3/9 tiêu chí có hỗ trợ đầy đủ, 3/9 hỗ trợ một phần, 3/9 chưa làm.**
 
 ## Tóm tắt trung thực
 
@@ -57,12 +57,12 @@ Nhóm tiêu chí còn thiếu đều là những tiêu chí **mang tính nghệ 
 nghĩa cao** (headroom chuẩn, tách nền, leading lines, pose tự nhiên, cân
 bằng thị giác) — đòi hỏi mô hình thị giác máy tính phức tạp hơn nhiều (phân
 vùng ảnh, ước lượng độ sâu, phát hiện đường nét, phân tích dáng người chi
-tiết). Đây chính là các hạng mục Phase 8-9 (Scene Recognition, Pose
-Assistant) trong roadmap Phase 1 mà tôi chưa triển khai trong lượt này.
+tiết). Scene Recognition, Pose Assistant (MediaPipe) và Horizon line
+detection trong ảnh đều đã được bổ sung ở các lượt sau — xem
+`docs/PHASE_8_TO_10.md`, `docs/POSE_ASSISTANT.md`.
 
-**Đề xuất:** nếu bạn muốn tăng % tiêu chí đạt được tiếp, ưu tiên nên làm
-theo thứ tự: (1) Horizon line detection trong ảnh (khác sensor) — để đặt
-đúng vị trí 1/3 cho đường chân trời thật trong ảnh phong cảnh; (2) Pose
-Assistant qua MediaPipe cho chân dung; (3) Semantic segmentation để tách
-nền/tiền cảnh. (Headroom detection cho chân dung đã được bổ sung ngay
-trong lượt này vì chi phí thấp — xem hàng #3 ở bảng Chân dung.)
+**Đề xuất tiếp theo** nếu muốn tăng % tiêu chí đạt được: Semantic
+segmentation để tách nền/tiền cảnh (phục vụ cả tiêu chí "hậu cảnh không
+gây xao nhãng" ở Chân dung lẫn "có tiền cảnh tạo chiều sâu" ở Phong cảnh)
+— đây là hạng mục còn lại tốn công sức nhất, cần mô hình segmentation
+riêng (vd. MediaPipe Selfie Segmentation), chưa làm.

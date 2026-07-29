@@ -62,6 +62,7 @@ import com.framewise.feature.overlay.CompositionScoreBadge
 import com.framewise.feature.overlay.GridOverlay
 import com.framewise.feature.overlay.GuidanceBanner
 import com.framewise.feature.overlay.HorizonLevelOverlay
+import com.framewise.feature.overlay.HorizonLineOverlay
 import com.framewise.feature.overlay.PhotographyTipCaption
 import com.framewise.feature.overlay.PoseGuidanceBanner
 import com.framewise.feature.overlay.SceneBadge
@@ -153,6 +154,7 @@ private fun CameraPreviewScreen(
         )
 
         GridOverlay(gridType = uiState.gridType, modifier = Modifier.fillMaxSize())
+        HorizonLineOverlay(horizonLineY = uiState.horizonLineY, modifier = Modifier.fillMaxSize())
         BoundingBoxOverlay(subjects = uiState.subjects, modifier = Modifier.fillMaxSize())
 
         Column(

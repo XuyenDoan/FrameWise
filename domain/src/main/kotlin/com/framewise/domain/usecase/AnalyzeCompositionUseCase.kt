@@ -68,6 +68,20 @@ class AnalyzeCompositionUseCase @Inject constructor() {
                     score -= 10
                 }
             }
+        } else {
+            // No dominant foreground subject - typical of a landscape shot.
+            // Place the detected horizon *line* (computer-vision estimate
+            // of where sky meets ground, not the sensor's roll angle) at
+            // the nearest thirds line instead of leaving it wherever it
+            // happens to fall.
+            vision.horizonLineY?.let { horizonY ->
+                val target = nearestHorizonThird(horizonY)
+                val dy = horizonY - target
+                if (abs(dy) > POSITION_THRESHOLD) {
+                    messages += if (dy > 0) GuidanceType.LOWER_CAMERA else GuidanceType.RAISE_CAMERA
+                    score -= 10
+                }
+            }
         }
 
         when (horizon.level) {
@@ -111,6 +125,12 @@ class AnalyzeCompositionUseCase @Inject constructor() {
             }
         }
         return best
+    }
+
+    /** Nearest of the 2 horizontal thirds lines (top or bottom) to y. */
+    private fun nearestHorizonThird(y: Float): Float {
+        val ys = floatArrayOf(1f / 3f, 2f / 3f)
+        return ys.minByOrNull { abs(it - y) } ?: ys[0]
     }
 
     private companion object {

@@ -96,6 +96,7 @@ class CameraPreviewViewModel @Inject constructor(
             photographyTip = getPhotographyTips(core.visionResult.scene),
             isVoiceEnabled = voiceEnabled,
             poseSuggestions = poseSuggestionList,
+            horizonLineY = core.visionResult.horizonLineY,
         )
     }
         .stateIn(
