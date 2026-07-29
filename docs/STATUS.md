@@ -48,12 +48,12 @@ sửa **5 lỗi biên dịch thật** qua nhiều lần lặp:
 4. Truth's `StringSubject` không có `.isNotBlank()` (unit test)
 5. Thiếu `import androidx.compose.runtime.getValue` cho `by` delegate trong `ArGuidanceArrow.kt`
 
-**Cập nhật gần nhất: CI đã XANH ở commit `17ca8fc`** (Horizon line
-detection). Commit thêm Semantic Segmentation vừa được push, **đang chờ
-CI xác nhận** — API MediaPipe `ImageSegmenter` (`ByteBufferExtractor`,
-`result.categoryMask().orElse(null)`, `ImageSegmenterOptions.builder()`)
-có độ chắc chắn thấp hơn Pose Landmarker's API nên khả năng có lỗi biên
-dịch thật cần sửa là có.
+**Cập nhật: CI đã XANH.** Commit `d4054f2` (Semantic Segmentation) build
+thành công ngay lần đầu — cả `:domain:test` (nay có thêm test cho
+`BUSY_BACKGROUND`) lẫn `:app:assembleDebug`, kể cả API MediaPipe
+`ImageSegmenter` mới (`ByteBufferExtractor`, `categoryMask().orElse(null)`,
+`ImageSegmenterOptions.builder()`). Đây là commit mới nhất trên branch
+tính đến lúc ghi chú này.
 
 Luôn kiểm tra trạng thái build của commit mới nhất trên GitHub Actions
 trước khi giả định branch đang ở trạng thái build được.
